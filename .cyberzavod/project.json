@@ -26,11 +26,19 @@
     }
   },
   "verification": {
-    "commands": [],
-    "paths": []
+    "commands": [
+      "make check"
+    ],
+    "paths": [
+      "src"
+    ]
   },
   "stack": {
-    "languages": [],
-    "frameworks": []
+    "languages": [
+      "javascript",
+      "typescript"
+    ],
+    "frameworks": [],
+    "packageManager": "npm"
   }
 }
