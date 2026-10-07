@@ -76,6 +76,10 @@ button {
   color: #b42318;
 }
 
+.message.message-success {
+  color: #067647;
+}
+
 h3 {
   margin: 1.25rem 0 0.5rem;
 }
@@ -84,4 +88,34 @@ h3 {
   margin: 0.5rem 0 0;
   color: #52606d;
   font-size: 0.9rem;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: #fff4e5;
+  border: 1px solid #f0b429;
+  border-radius: 0.5rem;
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice button {
+  flex-shrink: 0;
+}
+
+.field input[readonly] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Без этого правила display из классов выше перебивает атрибут hidden. */
+[hidden] {
+  display: none;
 }

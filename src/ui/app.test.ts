@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_NAME_LENGTH, type Bill } from "../bill/bill";
+import { encodeBase64Url } from "../sharing/base64-url";
+import { decodeBill, encodeBill } from "../sharing/bill-code";
 import { mountApp } from "./app";
 
 let root: HTMLElement;
+let unmountApp: () => void;
 
 function normalize(text: string | null): string {
   return (text ?? "").replace(/\s/gu, " ").trim();
@@ -122,12 +126,26 @@ function readParagraphs(): string[] {
 const EMPTY_SUMMARY =
   "Добавьте траты — здесь появится, кто кому сколько должен";
 
-beforeEach(() => {
+/** Монтирует приложение заново на текущем адресе, сняв обработчики прошлого. */
+function remountApp(): void {
+  unmountApp();
   document.body.innerHTML = '<main id="app"></main>';
   const app = document.getElementById("app");
   if (app === null) throw new Error("Не найден #app");
   root = app;
-  mountApp(root);
+  unmountApp = mountApp(root);
+}
+
+beforeEach(() => {
+  history.replaceState(null, "", "/");
+  Reflect.deleteProperty(navigator, "clipboard");
+  unmountApp = () => undefined;
+  remountApp();
+});
+
+afterEach(() => {
+  unmountApp();
+  Reflect.deleteProperty(navigator, "clipboard");
 });
 
 describe("сценарий деления счёта", () => {
@@ -389,6 +407,30 @@ describe("ошибки ввода", () => {
     expect(readTexts("section:nth-of-type(1) li span")).toEqual(["Аня"]);
   });
 
+  it("отклоняет слишком длинное имя", () => {
+    addParticipant("я".repeat(MAX_NAME_LENGTH + 1));
+
+    expect(readParticipantsMessage()).toBe(
+      "Имя длиннее 40 знаков — сократите его",
+    );
+    expect(readTexts("section:nth-of-type(1) li")).toEqual([]);
+  });
+
+  it("отклоняет трату, после которой итог не поместится в расчёт", () => {
+    addParticipant("Аня");
+    addExpense("90071992547407,69");
+    const expenses = readTexts("section:nth-of-type(2) li span");
+    const address = location.hash;
+
+    addExpense("90071992547404,61");
+
+    expect(readExpensesMessage()).toBe(
+      "Слишком большая сумма: общий итог счёта не поместится в расчёт",
+    );
+    expect(readTexts("section:nth-of-type(2) li span")).toEqual(expenses);
+    expect(location.hash).toBe(address);
+  });
+
   it.each(["", "0", "abc", "1,234"])("отклоняет сумму %j", (amount) => {
     addParticipant("Аня");
     addExpense(amount);
@@ -441,3 +483,457 @@ describe("экранирование", () => {
     expect(root.querySelector("b")).toBeNull();
   });
 });
+
+describe("ссылка на счёт", () => {
+  const anna = { id: "anna", name: "Аня" };
+  const boris = { id: "boris", name: "Боря" };
+  const billWithDinner: Bill = {
+    participants: [anna, boris],
+    expenses: [
+      {
+        id: "dinner",
+        payerId: anna.id,
+        amount: 90_000,
+        beneficiaryIds: [anna.id, boris.id],
+      },
+    ],
+  };
+  const MALFORMED_NOTICE =
+    "Не получилось открыть счёт по ссылке: она повреждена или скопирована не целиком. Попросите прислать её ещё раз, а пока можно начать новый счёт.";
+  const UNSUPPORTED_NOTICE =
+    "Эта ссылка сделана в другой версии приложения, и открыть её здесь не получится. Попросите прислать новую ссылку, а пока можно начать новый счёт.";
+
+  function openAddress(url: string): void {
+    history.replaceState(null, "", url);
+    remountApp();
+  }
+
+  function openCode(code: string): void {
+    openAddress(`/#${code}`);
+  }
+
+  function changeAddressOnPage(code: string): void {
+    history.replaceState(null, "", `/#${code}`);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  }
+
+  function readNotice(): HTMLElement | null {
+    return root.querySelector<HTMLElement>(".notice");
+  }
+
+  function readNoticeText(): string {
+    return normalize(readNotice()?.querySelector("p")?.textContent ?? "");
+  }
+
+  function readParticipantNames(): string[] {
+    return readTexts("section:nth-of-type(1) li span");
+  }
+
+  function readShareSection(): HTMLElement {
+    const share = root.querySelectorAll("section")[3];
+    if (share === undefined) throw new Error("Не найдена секция «Поделиться»");
+    return share;
+  }
+
+  function readShareMessage(): string {
+    const message = readShareSection().querySelector(".message");
+    return normalize(message?.textContent ?? "");
+  }
+
+  function readLinkField(): HTMLInputElement {
+    return findInput("Ссылка на счёт");
+  }
+
+  function isLinkFieldHidden(): boolean {
+    return readLinkField().closest<HTMLElement>(".field")?.hidden === true;
+  }
+
+  function installClipboard(writeText: (text: string) => Promise<void>): void {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+  }
+
+  /** Буфер, ответ которого тест выдаёт сам, когда ему удобно. */
+  function createDeferredWrite(): {
+    readonly writeText: (text: string) => Promise<void>;
+    readonly settled: Promise<void>;
+    readonly resolve: () => void;
+    readonly reject: () => void;
+  } {
+    let resolve = (): void => undefined;
+    let reject = (): void => undefined;
+    const pending = new Promise<void>((resolvePending, rejectPending) => {
+      resolve = resolvePending;
+      reject = () => {
+        rejectPending(new Error("Нет доступа"));
+      };
+    });
+    const settled = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    return { writeText: () => pending, settled, resolve, reject };
+  }
+
+  describe("адрес", () => {
+    it("пока ничего не менялось, не трогает адрес", () => {
+      expect(location.hash).toBe("");
+    });
+
+    it("после добавления участника содержит код текущего счёта", () => {
+      addParticipant("Аня");
+      addParticipant("Боря");
+
+      const expectedBill: Bill = { participants: [anna, boris], expenses: [] };
+      expect(location.hash).toBe(`#${encodeBill(expectedBill)}`);
+    });
+
+    it("после добавления траты содержит код счёта с тратой", () => {
+      addParticipant("Аня");
+      addParticipant("Боря");
+      selectPayer("Аня");
+      addExpense("900");
+
+      expect(location.hash).toBe(`#${encodeBill(billWithDinner)}`);
+    });
+
+    it("после удаления последнего участника записывает код пустого счёта", () => {
+      addParticipant("Аня");
+      findByLabel("Удалить участника Аня").click();
+
+      expect(location.hash).toBe(
+        `#${encodeBill({ participants: [], expenses: [] })}`,
+      );
+    });
+
+    it("не добавляет записей в историю", () => {
+      const lengthBefore = history.length;
+
+      addParticipant("Аня");
+      addParticipant("Боря");
+      addExpense("100");
+
+      expect(history.length).toBe(lengthBefore);
+    });
+
+    it("сохраняет путь и query", () => {
+      openAddress("/split-bill/?from=chat");
+
+      addParticipant("Аня");
+
+      expect(location.pathname).toBe("/split-bill/");
+      expect(location.search).toBe("?from=chat");
+      expect(location.hash).not.toBe("");
+    });
+  });
+
+  describe("открытие по ссылке", () => {
+    it("новое приложение на том же адресе показывает тот же счёт", () => {
+      addParticipant("Аня");
+      addParticipant("Боря");
+      selectPayer("Аня");
+      uncheckBeneficiary("Боря");
+      addExpense("700");
+      selectPayer("Боря");
+      uncheckBeneficiary("Аня");
+      uncheckBeneficiary("Боря");
+      const participants = readParticipantNames();
+      const expenses = readTexts("section:nth-of-type(2) li span");
+      const summary = readSummary();
+      const breakdown = readBreakdown();
+      const code = location.hash.slice(1);
+
+      openCode(code);
+
+      expect(readParticipantNames()).toEqual(participants);
+      expect(readTexts("section:nth-of-type(2) li span")).toEqual(expenses);
+      expect(readSummary()).toEqual(summary);
+      expect(readBreakdown()).toEqual(breakdown);
+      expect(readNotice()?.hidden).toBe(true);
+    });
+
+    it("после открытия новые участники не пересекаются с разобранными", () => {
+      openCode(encodeBill(billWithDinner));
+
+      addParticipant("Вера");
+      selectPayer("Вера");
+      addExpense("300");
+
+      expect(readParticipantNames()).toEqual(["Аня", "Боря", "Вера"]);
+      expect(readBreakdown()).toHaveLength(3);
+    });
+
+    it("открытие счёта само адрес не пишет", () => {
+      const code = encodeBill(billWithDinner);
+      const pageUrl = `/split-bill/?x=1#${code}`;
+
+      openAddress(pageUrl);
+
+      expect(location.pathname + location.search + location.hash).toBe(pageUrl);
+    });
+
+    it.each([
+      ["#мусор", "мусор", MALFORMED_NOTICE],
+      ["#1.!!!", "1.!!!", MALFORMED_NOTICE],
+      ["счёт с повторяющимися именами", invalidBillCode(), MALFORMED_NOTICE],
+      ["другая версия", `2.${encodeBase64Url("[[],[]]")}`, UNSUPPORTED_NOTICE],
+    ])(
+      "при ссылке «%s» показывает сообщение и пустой счёт",
+      (_title, code, text) => {
+        openCode(code);
+
+        expect(readNotice()?.hidden).toBe(false);
+        expect(readNotice()?.getAttribute("role")).toBe("alert");
+        expect(readNoticeText()).toBe(text);
+        expect(readParticipantNames()).toEqual([]);
+        expect(readSummary()).toEqual([EMPTY_SUMMARY]);
+      },
+    );
+
+    it("подделанная ссылка с огромным итогом не роняет страницу", () => {
+      const forgedCode =
+        "1.W1siYSIsImIiLCJjIl0sW1sxLDkwMDcxOTkyNTQ3NDA3NjksWzJdXSxbMCw5MDA3MTk5MjU0NzQwNDYxLFsxXV0sWzIsOTAwNzE5OTI1NDc0MDIxMCxbMV1dXV0";
+
+      openCode(forgedCode);
+
+      expect(readNoticeText()).toBe(MALFORMED_NOTICE);
+      expect(readParticipantNames()).toEqual([]);
+      expect(readSummary()).toEqual([EMPTY_SUMMARY]);
+
+      changeAddressOnPage(encodeBill(billWithDinner));
+
+      expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
+    });
+
+    it("не меняет адрес, пока счёт не менялся", () => {
+      openCode("1.!!!");
+
+      expect(location.hash).toBe("#1.!!!");
+    });
+
+    it("после первого изменения заменяет адрес валидным кодом, формы работают", () => {
+      openCode("1.!!!");
+
+      addParticipant("Аня");
+
+      const expectedBill: Bill = { participants: [anna], expenses: [] };
+      expect(readParticipantNames()).toEqual(["Аня"]);
+      expect(location.hash).toBe(`#${encodeBill(expectedBill)}`);
+    });
+
+    it("«Закрыть» прячет сообщение и ничего больше не меняет", () => {
+      openCode("1.!!!");
+
+      findByLabel("Закрыть сообщение").click();
+
+      expect(readNotice()?.hidden).toBe(true);
+      expect(location.hash).toBe("#1.!!!");
+    });
+
+    it("сообщение стоит между заголовком и секциями", () => {
+      const children = [...root.children].map((child) => child.tagName);
+
+      expect(children).toEqual([
+        "H1",
+        "DIV",
+        "SECTION",
+        "SECTION",
+        "SECTION",
+        "SECTION",
+      ]);
+      expect(readNotice()?.hidden).toBe(true);
+    });
+  });
+
+  describe("изменение адреса на открытой странице", () => {
+    it("показывает счёт из нового валидного кода", () => {
+      changeAddressOnPage(encodeBill(billWithDinner));
+
+      expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
+      expect(readSummary()).toEqual(["Боря → Аня: 450,00 ₽"]);
+    });
+
+    it("при битом коде показывает сообщение и пустой счёт", () => {
+      addParticipant("Аня");
+
+      changeAddressOnPage("1.!!!");
+
+      expect(readNoticeText()).toBe(MALFORMED_NOTICE);
+      expect(readParticipantNames()).toEqual([]);
+    });
+
+    it("при валидном коде прячет прежнее сообщение", () => {
+      openCode("1.!!!");
+
+      changeAddressOnPage(encodeBill(billWithDinner));
+
+      expect(readNotice()?.hidden).toBe(true);
+    });
+
+    it("при пустом фрагменте показывает пустой счёт", () => {
+      openCode(encodeBill(billWithDinner));
+
+      changeAddressOnPage("");
+
+      expect(readParticipantNames()).toEqual([]);
+    });
+
+    it("не пишет адрес, а значит не вызывает цикла", () => {
+      const code = encodeBill(billWithDinner);
+
+      changeAddressOnPage(code);
+
+      expect(location.hash).toBe(`#${code}`);
+    });
+
+    it("после снятия приложения перестаёт реагировать на адрес", () => {
+      unmountApp();
+
+      changeAddressOnPage(encodeBill(billWithDinner));
+
+      expect(readParticipantNames()).toEqual([]);
+    });
+  });
+
+  describe("«Поделиться»", () => {
+    it("копирует ссылку текущего счёта и сообщает об этом", async () => {
+      const writeText = vi.fn<(text: string) => Promise<void>>();
+      writeText.mockResolvedValue(undefined);
+      installClipboard(writeText);
+      openAddress("/split-bill/");
+      addParticipant("Аня");
+      addParticipant("Боря");
+      const code = encodeBill({ participants: [anna, boris], expenses: [] });
+
+      findButton("Поделиться").click();
+
+      await vi.waitFor(() => {
+        expect(readShareMessage()).toBe("Ссылка скопирована");
+      });
+      expect(writeText).toHaveBeenCalledExactlyOnceWith(
+        `${location.origin}/split-bill/#${code}`,
+      );
+      expect(isLinkFieldHidden()).toBe(true);
+    });
+
+    it("сообщение об успехе не стилизовано как ошибка", async () => {
+      const writeText = vi.fn<(text: string) => Promise<void>>();
+      writeText.mockResolvedValue(undefined);
+      installClipboard(writeText);
+      addParticipant("Аня");
+
+      findButton("Поделиться").click();
+
+      await vi.waitFor(() => {
+        expect(readShareMessage()).toBe("Ссылка скопирована");
+      });
+      const message = readShareSection().querySelector(".message");
+      expect(message?.classList.contains("message-success")).toBe(true);
+
+      addParticipant("Боря");
+
+      expect(message?.classList.contains("message-success")).toBe(false);
+    });
+
+    it("ответ буфера после изменения счёта не показывает «Ссылка скопирована»", async () => {
+      const clipboard = createDeferredWrite();
+      installClipboard(clipboard.writeText);
+      addParticipant("Аня");
+      findButton("Поделиться").click();
+
+      addParticipant("Боря");
+      clipboard.resolve();
+      await clipboard.settled;
+
+      expect(readShareMessage()).toBe("");
+      expect(isLinkFieldHidden()).toBe(true);
+    });
+
+    it("отказ буфера после изменения счёта не показывает поле со старой ссылкой", async () => {
+      const clipboard = createDeferredWrite();
+      installClipboard(clipboard.writeText);
+      addParticipant("Аня");
+      findButton("Поделиться").click();
+
+      addParticipant("Боря");
+      clipboard.reject();
+      await clipboard.settled;
+
+      expect(readShareMessage()).toBe("");
+      expect(isLinkFieldHidden()).toBe(true);
+    });
+
+    it("без буфера показывает поле со ссылкой", () => {
+      addParticipant("Аня");
+
+      findButton("Поделиться").click();
+
+      expect(readShareMessage()).toBe("Скопируйте ссылку из поля");
+      expect(isLinkFieldHidden()).toBe(false);
+      expect(readLinkField().readOnly).toBe(true);
+      expect(readLinkField().value).toBe(location.href);
+    });
+
+    it("при отказе буфера показывает поле со ссылкой", async () => {
+      const writeText = vi.fn<(text: string) => Promise<void>>();
+      writeText.mockRejectedValue(new Error("Нет доступа"));
+      installClipboard(writeText);
+      addParticipant("Аня");
+
+      findButton("Поделиться").click();
+
+      await vi.waitFor(() => {
+        expect(readShareMessage()).toBe("Скопируйте ссылку из поля");
+      });
+      expect(isLinkFieldHidden()).toBe(false);
+      expect(readLinkField().value).toBe(location.href);
+    });
+
+    it("отказ буфера после успеха без изменения счёта не оставляет сообщение зелёным", async () => {
+      const writeText = vi.fn<(text: string) => Promise<void>>();
+      writeText.mockResolvedValueOnce(undefined);
+      writeText.mockRejectedValueOnce(new Error("Нет доступа"));
+      installClipboard(writeText);
+      addParticipant("Аня");
+      findButton("Поделиться").click();
+      await vi.waitFor(() => {
+        expect(readShareMessage()).toBe("Ссылка скопирована");
+      });
+
+      findButton("Поделиться").click();
+
+      await vi.waitFor(() => {
+        expect(readShareMessage()).toBe("Скопируйте ссылку из поля");
+      });
+      const message = readShareSection().querySelector(".message");
+      expect(message?.classList.contains("message-success")).toBe(false);
+    });
+
+    it("ссылка пустого счёта открывается как пустой счёт", () => {
+      findButton("Поделиться").click();
+
+      const link = new URL(readLinkField().value);
+      const result = decodeBill(link.hash.slice(1));
+      expect(result).toEqual({
+        kind: "decoded",
+        bill: { participants: [], expenses: [] },
+      });
+    });
+
+    it("при следующей отрисовке сбрасывает сообщение и прячет поле", () => {
+      findButton("Поделиться").click();
+
+      addParticipant("Аня");
+
+      expect(readShareMessage()).toBe("");
+      expect(isLinkFieldHidden()).toBe(true);
+    });
+  });
+});
+
+function invalidBillCode(): string {
+  return `1.${encodeBase64Url('[["Аня","аня"],[]]')}`;
+}

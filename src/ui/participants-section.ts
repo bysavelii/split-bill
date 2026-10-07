@@ -2,6 +2,7 @@ import {
   addParticipant,
   findNameProblem,
   isParticipantInExpenses,
+  MAX_NAME_LENGTH,
   removeParticipant,
   type Bill,
   type NameProblem,
@@ -16,6 +17,8 @@ function describeNameProblem(problem: NameProblem): string {
   switch (problem) {
     case "empty":
       return "Введите имя";
+    case "tooLong":
+      return `Имя длиннее ${String(MAX_NAME_LENGTH)} знаков — сократите его`;
     case "duplicate":
       return "Участник с таким именем уже есть";
   }

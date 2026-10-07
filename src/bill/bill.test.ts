@@ -5,8 +5,12 @@ import {
   addParticipant,
   calculateTotalSpent,
   findNameProblem,
+  findNamesProblem,
   getParticipantName,
   isParticipantInExpenses,
+  isTotalSpentWithinLimit,
+  MAX_NAME_LENGTH,
+  MAX_TOTAL_SPENT,
   removeExpense,
   removeParticipant,
   type Bill,
@@ -87,6 +91,24 @@ describe("findNameProblem", () => {
     expect(findNameProblem(bill, " аНЯ ")).toBe("duplicate");
   });
 
+  it("находит слишком длинное имя", () => {
+    const name = "я".repeat(MAX_NAME_LENGTH + 1);
+
+    expect(findNameProblem(bill, name)).toBe("tooLong");
+  });
+
+  it("пропускает имя предельной длины, пробелы по краям не считаются", () => {
+    const name = ` ${"я".repeat(MAX_NAME_LENGTH)} `;
+
+    expect(findNameProblem(bill, name)).toBeUndefined();
+  });
+
+  it("считает эмодзи одним знаком", () => {
+    const name = "😀".repeat(MAX_NAME_LENGTH);
+
+    expect(findNameProblem(bill, name)).toBeUndefined();
+  });
+
   it("пропускает новое имя", () => {
     expect(findNameProblem(bill, "Боря")).toBeUndefined();
   });
@@ -140,5 +162,66 @@ describe("calculateTotalSpent", () => {
     };
 
     expect(calculateTotalSpent(bill)).toBe(115_050);
+  });
+});
+
+describe("isTotalSpentWithinLimit", () => {
+  function createBillSpending(...amounts: number[]): Bill {
+    const expenses = amounts.map((amount, index) => ({
+      ...dinner,
+      id: `expense-${String(index)}`,
+      amount,
+    }));
+    return { participants: [anna, boris], expenses };
+  }
+
+  it("принимает пустой счёт", () => {
+    expect(isTotalSpentWithinLimit(EMPTY_BILL)).toBe(true);
+  });
+
+  it("принимает итог ровно на пределе", () => {
+    const bill = createBillSpending(MAX_TOTAL_SPENT - 1, 1);
+
+    expect(isTotalSpentWithinLimit(bill)).toBe(true);
+  });
+
+  it("отклоняет итог выше предела, хотя каждая трата в пределе", () => {
+    const bill = createBillSpending(MAX_TOTAL_SPENT, 1);
+
+    expect(isTotalSpentWithinLimit(bill)).toBe(false);
+  });
+
+  it("отклоняет итог выше предела из нескольких трат", () => {
+    const bill = createBillSpending(
+      9_007_199_254_740_769,
+      9_007_199_254_740_461,
+      9_007_199_254_740_210,
+    );
+
+    expect(isTotalSpentWithinLimit(bill)).toBe(false);
+  });
+});
+
+describe("findNamesProblem", () => {
+  it("для пустого списка проблем нет", () => {
+    expect(findNamesProblem([])).toBeUndefined();
+  });
+
+  it("находит пустое имя", () => {
+    expect(findNamesProblem(["Аня", "   "])).toBe("empty");
+  });
+
+  it("находит повтор без учёта регистра и пробелов по краям", () => {
+    expect(findNamesProblem(["Аня", "Боря", " аНЯ "])).toBe("duplicate");
+  });
+
+  it("находит слишком длинное имя", () => {
+    const names = ["Аня", "я".repeat(MAX_NAME_LENGTH + 1)];
+
+    expect(findNamesProblem(names)).toBe("tooLong");
+  });
+
+  it("принимает список разных имён", () => {
+    expect(findNamesProblem(["Аня", "Боря", "Вера"])).toBeUndefined();
   });
 });

@@ -1,6 +1,7 @@
 import {
   addExpense,
   getParticipantName,
+  isTotalSpentWithinLimit,
   removeExpense,
   type Bill,
   type Expense,
@@ -15,6 +16,8 @@ const AMOUNT_INPUT_ID = "expense-amount";
 
 const AMOUNT_ERROR = "Введите сумму больше нуля, например 1500 или 349,90";
 const NO_BENEFICIARIES_ERROR = "Отметьте, за кого платили";
+const TOTAL_TOO_LARGE_ERROR =
+  "Слишком большая сумма: общий итог счёта не поместится в расчёт";
 
 export function createExpensesSection(actions: BillActions): Section {
   const payerSelect = createElement("select", {
@@ -90,9 +93,15 @@ export function createExpensesSection(actions: BillActions): Section {
       amount,
       beneficiaryIds: checkedCheckboxes.map((checkbox) => checkbox.value),
     };
+    const changedBill = addExpense(actions.getBill(), expense);
+    if (!isTotalSpentWithinLimit(changedBill)) {
+      message.textContent = TOTAL_TOO_LARGE_ERROR;
+      return;
+    }
+
     amountInput.value = "";
     checkAllBeneficiaries();
-    actions.changeBill(addExpense(actions.getBill(), expense));
+    actions.changeBill(changedBill);
   }
 
   function createBeneficiaryCheckbox(

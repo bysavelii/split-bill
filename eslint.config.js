@@ -8,6 +8,11 @@ const DOM_GLOBALS = [
   "localStorage",
   "location",
   "navigator",
+  "history",
+  "sessionStorage",
+  "fetch",
+  "self",
+  "globalThis",
 ];
 
 export default tseslint.config(
@@ -27,14 +32,14 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
-    // Предметная логика не знает о DOM и интерфейсе.
-    files: ["src/bill/**", "src/settlement/**"],
+    // Предметная логика и кодирование ссылки не знают о DOM и интерфейсе.
+    files: ["src/bill/**", "src/settlement/**", "src/sharing/**"],
     rules: {
       "no-restricted-globals": [
         "error",
         ...DOM_GLOBALS.map((name) => ({
           name,
-          message: `Предметная логика не должна обращаться к ${name}: она не знает о DOM`,
+          message: `Код без DOM не должен обращаться к ${name}`,
         })),
       ],
       "no-restricted-imports": [
@@ -43,7 +48,7 @@ export default tseslint.config(
           patterns: [
             {
               group: ["**/ui/**"],
-              message: "Предметная логика не должна импортировать интерфейс",
+              message: "Код без DOM не должен импортировать интерфейс",
             },
           ],
         },
