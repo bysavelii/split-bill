@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-07-503a1f9c",
+  "timestamp": "2026-10-07T23:00:58.014Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Vite собирает с base: \"./\", выкладка на GitHub Pages — workflow на push в main с make check перед выкладкой",
+    "description": "Относительные пути работают в любом подкаталоге без имени владельца в коде; одна сборка из make check идёт в Pages, проверки не обходятся"
+  }
+}
