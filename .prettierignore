@@ -1,0 +1,7 @@
+dist
+coverage
+package-lock.json
+.cyberzavod
+.claude
+CLAUDE.md
+AGENTS.md
