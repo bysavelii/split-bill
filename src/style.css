@@ -1,22 +1,52 @@
+:root {
+  --color-text: #1f2933;
+  --color-text-muted: #52606d;
+  --color-background: #f5f7fa;
+  --color-surface: #fff;
+  --color-border: #d9e2ec;
+  --color-divider: #e4e7eb;
+  --color-error: #b42318;
+  --color-success: #067647;
+  --color-warning-background: #fff4e5;
+  --color-warning-border: #f0b429;
+
+  --radius-large: 0.5rem;
+  --radius-small: 0.25rem;
+  --section-gap: 1.5rem;
+  --column-width: 40rem;
+
+  /* 44 px — минимальный размер цели касания для пальца. */
+  --touch-target: 2.75rem;
+  --checkbox-size: 1.25rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
-  color: #1f2933;
-  background: #f5f7fa;
+  color: var(--color-text);
+  background: var(--color-background);
+  /* Без этого длинное имя без пробелов растянет страницу шире экрана телефона. */
+  overflow-wrap: anywhere;
 }
 
 main {
-  max-width: 40rem;
+  max-width: var(--column-width);
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: var(--section-gap) 1rem;
 }
 
 section {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--section-gap);
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #d9e2ec;
-  border-radius: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
 }
 
 h1,
@@ -37,21 +67,36 @@ h2 {
 }
 
 fieldset {
-  border: 1px solid #d9e2ec;
-  border-radius: 0.25rem;
+  /* По умолчанию у fieldset min-width: min-content, и длинные имена его распирают. */
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
 }
 
 .checkbox {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--touch-target);
+}
+
+.checkbox input {
+  flex-shrink: 0;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  margin: 0;
 }
 
 input[type="text"],
 select {
+  width: 100%;
+  min-height: var(--touch-target);
   padding: 0.4rem;
   font: inherit;
 }
 
 button {
+  min-height: var(--touch-target);
   padding: 0.4rem 0.8rem;
   font: inherit;
   cursor: pointer;
@@ -64,20 +109,29 @@ button {
 
 .list li {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.4rem 0;
-  border-bottom: 1px solid #e4e7eb;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.list li > span {
+  min-width: 0;
+}
+
+.list li button {
+  flex-shrink: 0;
 }
 
 .message {
   min-height: 1.2em;
   margin: 0;
-  color: #b42318;
+  color: var(--color-error);
 }
 
 .message.message-success {
-  color: #067647;
+  color: var(--color-success);
 }
 
 h3 {
@@ -86,7 +140,7 @@ h3 {
 
 .note {
   margin: 0.5rem 0 0;
-  color: #52606d;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -95,11 +149,11 @@ h3 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--section-gap);
   padding: 0.75rem 1rem;
-  background: #fff4e5;
-  border: 1px solid #f0b429;
-  border-radius: 0.5rem;
+  background: var(--color-warning-background);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-large);
 }
 
 .notice p {
@@ -108,11 +162,6 @@ h3 {
 
 .notice button {
   flex-shrink: 0;
-}
-
-.field input[readonly] {
-  width: 100%;
-  box-sizing: border-box;
 }
 
 /* Без этого правила display из классов выше перебивает атрибут hidden. */
