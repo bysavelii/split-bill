@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-07-6736d914",
+  "timestamp": "2026-10-07T21:56:48.987Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Интерфейс на ванильном TypeScript и DOM, без UI-фреймворка",
+    "description": "Три формы и три списка: фреймворк не окупается, страница легче и проще"
+  }
+}
