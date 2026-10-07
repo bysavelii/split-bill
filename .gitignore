@@ -1,1 +1,4 @@
 /.cyberzavod/journal/capture/
+node_modules/
+dist/
+coverage/
