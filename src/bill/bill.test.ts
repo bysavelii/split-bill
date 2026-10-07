@@ -3,6 +3,7 @@ import {
   EMPTY_BILL,
   addExpense,
   addParticipant,
+  calculateTotalSpent,
   findNameProblem,
   getParticipantName,
   isParticipantInExpenses,
@@ -121,5 +122,23 @@ describe("getParticipantName", () => {
     expect(() => getParticipantName(EMPTY_BILL, "нет")).toThrow(
       "Участник не найден",
     );
+  });
+});
+
+describe("calculateTotalSpent", () => {
+  it("для пустого счёта равна нулю", () => {
+    expect(calculateTotalSpent(EMPTY_BILL)).toBe(0);
+  });
+
+  it("складывает суммы всех трат", () => {
+    const bill: Bill = {
+      participants: [anna, boris],
+      expenses: [
+        dinner,
+        { ...dinner, id: "taxi", payerId: boris.id, amount: 25_050 },
+      ],
+    };
+
+    expect(calculateTotalSpent(bill)).toBe(115_050);
   });
 });

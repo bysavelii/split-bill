@@ -45,6 +45,11 @@ export function removeExpense(bill: Bill, id: ExpenseId): Bill {
   return { ...bill, expenses };
 }
 
+/** Сумма всех трат счёта. */
+export function calculateTotalSpent(bill: Bill): Kopecks {
+  return bill.expenses.reduce((total, expense) => total + expense.amount, 0);
+}
+
 export function findNameProblem(
   bill: Bill,
   name: string,

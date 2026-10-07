@@ -88,9 +88,35 @@ function readExpensesMessage(): string {
 
 function readSummary(): string[] {
   const summary = root.querySelectorAll("section")[2];
-  const items = [...(summary?.querySelectorAll("li") ?? [])];
+  const items = [...(summary?.querySelectorAll(".transfers li") ?? [])];
   if (items.length > 0) return items.map((item) => normalize(item.textContent));
   return [normalize(summary?.querySelector("p")?.textContent ?? "")];
+}
+
+function readSummarySection(): HTMLElement {
+  const summary = root.querySelectorAll("section")[2];
+  if (summary === undefined) throw new Error("Не найдена секция «Итог»");
+  return summary;
+}
+
+function readBreakdown(): string[] {
+  const rows = readSummarySection().querySelectorAll(".breakdown li");
+  return [...rows].map((row) => normalize(row.textContent));
+}
+
+function readReason(): string | undefined {
+  const reason = readSummarySection().querySelector(".transfers-reason");
+  return reason === null ? undefined : normalize(reason.textContent);
+}
+
+function readNotes(): string[] {
+  const notes = readSummarySection().querySelectorAll(".note");
+  return [...notes].map((note) => normalize(note.textContent));
+}
+
+function readParagraphs(): string[] {
+  const paragraphs = readSummarySection().querySelectorAll("p");
+  return [...paragraphs].map((paragraph) => normalize(paragraph.textContent));
 }
 
 const EMPTY_SUMMARY =
@@ -195,6 +221,155 @@ describe("сценарий деления счёта", () => {
 
     expect(form?.hidden).toBe(false);
     expect(notice?.hidden).toBe(true);
+  });
+});
+
+describe("объяснение итога", () => {
+  const ROUNDING_TEXT =
+    "Когда трата не делится поровну до копейки, у тех, кто выше в списке участников, доля на копейку больше.";
+
+  function addParticipants(...names: string[]): void {
+    for (const name of names) addParticipant(name);
+  }
+
+  function addExpenseBy(payer: string, amount: string): void {
+    selectPayer(payer);
+    addExpense(amount);
+  }
+
+  it("для одного платившего за всех показывает разбор", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    expect(readParagraphs()).toContain("Всего потрачено: 900,00 ₽");
+    expect(readBreakdown()).toEqual([
+      "Аня: заплачено 900,00 ₽, доля 300,00 ₽ — получает 600,00 ₽",
+      "Боря: заплачено 0,00 ₽, доля 300,00 ₽ — отдаёт 300,00 ₽",
+      "Вера: заплачено 0,00 ₽, доля 300,00 ₽ — отдаёт 300,00 ₽",
+    ]);
+    expect(readSummarySection().querySelector("h3")?.textContent).toBe(
+      "Как посчитано",
+    );
+  });
+
+  it("объясняет, почему переводов именно столько", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    expect(
+      readReason()?.startsWith(
+        "2 перевода — меньше не получится: деньги отдают или получают 3 человека, ",
+      ),
+    ).toBe(true);
+  });
+
+  it("100 рублей на троих: два перевода по 33,33 ₽", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "100");
+
+    expect(readSummary()).toEqual([
+      "Боря → Аня: 33,33 ₽",
+      "Вера → Аня: 33,33 ₽",
+    ]);
+  });
+
+  it("взаимные долги 700 и 300 ₽: один перевод на 400 ₽", () => {
+    addParticipants("Аня", "Боря");
+    uncheckBeneficiary("Аня");
+    addExpenseBy("Аня", "700");
+    uncheckBeneficiary("Боря");
+    addExpenseBy("Боря", "300");
+
+    expect(readSummary()).toEqual(["Боря → Аня: 400,00 ₽"]);
+  });
+
+  it("при взаимных долгах показывает «в расчёте» и не объясняет число переводов", () => {
+    addParticipants("Аня", "Боря");
+    uncheckBeneficiary("Аня");
+    addExpenseBy("Аня", "500");
+    uncheckBeneficiary("Боря");
+    addExpenseBy("Боря", "500");
+
+    expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
+    expect(readReason()).toBeUndefined();
+    expect(readBreakdown()).toEqual([
+      "Аня: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
+      "Боря: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
+    ]);
+  });
+
+  it("объясняет, что переводов меньше обычного, когда компания делится на группы", () => {
+    addParticipants("Аня", "Боря", "Вера", "Гена");
+    uncheckBeneficiary("Аня");
+    uncheckBeneficiary("Вера");
+    uncheckBeneficiary("Гена");
+    addExpenseBy("Аня", "300");
+    uncheckBeneficiary("Аня");
+    uncheckBeneficiary("Боря");
+    uncheckBeneficiary("Вера");
+    addExpenseBy("Вера", "200");
+
+    expect(readSummary()).toEqual([
+      "Боря → Аня: 300,00 ₽",
+      "Гена → Вера: 200,00 ₽",
+    ]);
+    expect(
+      readReason()?.startsWith(
+        "2 перевода вместо обычных 3: деньги отдают или получают 4 человека",
+      ),
+    ).toBe(true);
+  });
+
+  it("поясняет про копейки, когда трата не делится поровну", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "100");
+
+    expect(readNotes()).toContain(ROUNDING_TEXT);
+  });
+
+  it("не поясняет про копейки, когда все траты делятся поровну", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    expect(readNotes()).not.toContain(ROUNDING_TEXT);
+    expect(readNotes()).toHaveLength(1);
+  });
+
+  it("один участник с тратой на себя: в расчёте, переводов нет", () => {
+    addParticipants("Аня");
+    addExpenseBy("Аня", "500");
+
+    expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
+    expect(readBreakdown()).toEqual([
+      "Аня: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
+    ]);
+  });
+
+  it("участник без трат попадает в разбор строкой «в расчёте»", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    uncheckBeneficiary("Вера");
+    addExpenseBy("Аня", "100");
+
+    expect(readBreakdown()).toEqual([
+      "Аня: заплачено 100,00 ₽, доля 50,00 ₽ — получает 50,00 ₽",
+      "Боря: заплачено 0,00 ₽, доля 50,00 ₽ — отдаёт 50,00 ₽",
+      "Вера: заплачено 0,00 ₽, доля 0,00 ₽ — в расчёте",
+    ]);
+  });
+
+  it("очень большая сумма показывается без потери копеек", () => {
+    addParticipants("Аня", "Боря");
+    addExpenseBy("Аня", "1000000000");
+
+    expect(readSummary()).toEqual(["Боря → Аня: 500 000 000,00 ₽"]);
+  });
+
+  it("без трат не показывает «Как посчитано»", () => {
+    addParticipants("Аня", "Боря");
+
+    expect(readSummarySection().querySelector("h3")).toBeNull();
+    expect(readSummarySection().querySelector(".breakdown")).toBeNull();
+    expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
 });
 
