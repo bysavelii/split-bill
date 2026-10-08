@@ -1,12 +1,18 @@
 import { calculateTotalSpent } from "../bill/bill";
 import { formatCount } from "../i18n/format";
 import { useAmountFormatter } from "./amount-formatter";
+import type { Currency } from "../bill/currency";
 import type { BillViewProps } from "./bill-props";
+import { CurrencySelect } from "./currency-select";
 import { LanguageSwitch } from "./language-switch";
 import { useLocale } from "./locale-context";
 
+export interface PageHeaderProps extends BillViewProps {
+  readonly onCurrencyChange: (currency: Currency) => void;
+}
+
 /** The header: the toolbar, the title, the subtitle and the bill overview in one line. */
-export function PageHeader(props: BillViewProps) {
+export function PageHeader(props: PageHeaderProps) {
   const { locale, messages } = useLocale();
   const formatAmount = useAmountFormatter(() => props.currency);
 
@@ -25,6 +31,10 @@ export function PageHeader(props: BillViewProps) {
     <header class="page-header">
       <div class="page-toolbar">
         <LanguageSwitch bill={props.bill} currency={props.currency} />
+        <CurrencySelect
+          currency={props.currency}
+          onCurrencyChange={props.onCurrencyChange}
+        />
       </div>
       <h1>{messages.header.title}</h1>
       <p class="page-subtitle">{messages.header.subtitle}</p>

@@ -90,6 +90,7 @@ export const EN_MESSAGES: Messages = {
     transfers: { one: "transfer", other: "transfers" },
     people: { one: "person", other: "people" },
   },
+  currencyLabel: "Currency",
   currencyNames: {
     USD: "US dollar",
     RUB: "Russian ruble",

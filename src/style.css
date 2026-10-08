@@ -126,6 +126,11 @@ main {
   margin-bottom: var(--space-2);
 }
 
+.currency-select select {
+  width: auto;
+  max-width: 100%;
+}
+
 .language-link {
   display: inline-flex;
   align-items: center;

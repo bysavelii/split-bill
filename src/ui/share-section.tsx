@@ -38,9 +38,10 @@ export function ShareSection(props: BillProps) {
   // and the answer about the old link must be discarded.
   let billGeneration = 0;
 
+  // A link carries the currency too, so a changed currency makes the old link stale as well.
   createEffect(
     on(
-      () => props.bill,
+      [() => props.bill, () => props.currency],
       () => {
         billGeneration += 1;
         setState(IDLE_STATE);

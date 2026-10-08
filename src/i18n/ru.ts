@@ -109,6 +109,7 @@ export const RU_MESSAGES: Messages = {
       other: "человека",
     },
   },
+  currencyLabel: "Валюта",
   currencyNames: {
     USD: "Доллар США",
     RUB: "Российский рубль",

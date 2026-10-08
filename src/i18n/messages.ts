@@ -100,6 +100,8 @@ export interface Messages {
     readonly transfers: PluralForms;
     readonly people: PluralForms;
   };
+  /** The accessible name of the currency select; the label is not shown. */
+  readonly currencyLabel: string;
   readonly currencyNames: Record<Currency, string>;
   /** Names the minor unit of the currency, so it differs per currency. */
   readonly roundingNote: Record<Currency, string>;

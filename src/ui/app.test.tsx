@@ -47,13 +47,20 @@ function addExpense(amount: string): void {
   findButton("Добавить трату").click();
 }
 
+/** The payer select of the expense form; the currency select in the header is a different one. */
+function findPayerSelect(): HTMLSelectElement {
+  const select = root.querySelector<HTMLSelectElement>(".form select");
+  if (select === null) throw new Error("Payer select not found");
+
+  return select;
+}
+
 function selectPayer(name: string): void {
-  const select = root.querySelector("select");
-  const option = [...(select?.options ?? [])].find(
+  const select = findPayerSelect();
+  const option = [...select.options].find(
     (candidate) => candidate.text === name,
   );
-  if (select === null || option === undefined)
-    throw new Error(`Payer ${name} not found`);
+  if (option === undefined) throw new Error(`Payer ${name} not found`);
   fireEvent.change(select, { target: { value: option.value } });
 }
 
@@ -288,7 +295,7 @@ describe("the bill splitting scenario", () => {
     uncheckBeneficiary("Аня");
     addExpense("100");
 
-    const select = root.querySelector("select");
+    const select = findPayerSelect();
     const checkboxes = [
       ...root.querySelectorAll<HTMLInputElement>("label.checkbox input"),
     ];
@@ -297,7 +304,7 @@ describe("the bill splitting scenario", () => {
       true,
       true,
     ]);
-    expect(select?.selectedOptions[0]?.text).toBe("Боря");
+    expect(select.selectedOptions[0]?.text).toBe("Боря");
   });
 
   it("checks everyone again when the list of participants changes", () => {
@@ -876,7 +883,7 @@ describe("input errors", () => {
 
     addParticipant("Вера");
 
-    expect(root.querySelector("select")?.selectedOptions[0]?.text).toBe("Боря");
+    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Боря");
   });
 
   it("after the chosen payer is removed picks the remaining participant", () => {
@@ -886,7 +893,7 @@ describe("input errors", () => {
     findButton("Удалить участника Боря").click();
     addExpense("100");
 
-    expect(root.querySelector("select")?.selectedOptions[0]?.text).toBe("Аня");
+    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Аня");
     expect(readExpenses()).toEqual(["Аня — 100,00 ₽, за всех"]);
   });
 
@@ -1692,6 +1699,246 @@ describe("currency of an opened bill on the Russian page", () => {
       "Ann — 123,45 ₽, за всех",
       "Bob — 5,00 ₽, за: Bob",
     ]);
+  });
+});
+
+describe("currency", () => {
+  function findCurrencySelect(): HTMLSelectElement {
+    const select = root.querySelector<HTMLSelectElement>(
+      ".page-toolbar select",
+    );
+    if (select === null) throw new Error("Currency select not found");
+
+    return select;
+  }
+
+  function chooseCurrency(currency: string): void {
+    fireEvent.change(findCurrencySelect(), { target: { value: currency } });
+  }
+
+  function readAddressCurrency(): unknown {
+    const result = decodeBill(location.hash.slice(1));
+
+    return result.kind === "decoded" ? result.currency : result.error;
+  }
+
+  function readOptionTexts(select: HTMLSelectElement): string[] {
+    return [...select.options].map((option) => option.text);
+  }
+
+  function readEnglishOverview(): string[] {
+    return readTexts(".page-header .overview-item");
+  }
+
+  function openLinkField(): HTMLInputElement {
+    findButton("Share").click();
+
+    return findInput("Bill link");
+  }
+
+  describe("select", () => {
+    it("is a native select named Currency and sits in the toolbar", () => {
+      remountApp("en");
+
+      const select = findCurrencySelect();
+      const label = root.querySelector(`label[for="${select.id}"]`);
+
+      expect(select).toBe(findInput("Currency"));
+      expect(label?.classList.contains("visually-hidden")).toBe(true);
+      expect(readOptionTexts(select)).toEqual(["US dollar", "Russian ruble"]);
+    });
+
+    it("is named Валюта on the Russian page", () => {
+      const select = findCurrencySelect();
+
+      expect(select).toBe(findInput("Валюта"));
+      expect(readOptionTexts(select)).toEqual([
+        "Доллар США",
+        "Российский рубль",
+      ]);
+    });
+  });
+
+  describe("default", () => {
+    it("is the dollar on the English page", () => {
+      remountApp("en");
+
+      expect(findCurrencySelect().value).toBe("USD");
+      expect(findInput("Amount, $")).toBeDefined();
+    });
+
+    it("is the ruble on the Russian page", () => {
+      expect(findCurrencySelect().value).toBe("RUB");
+      expect(findInput("Сколько, ₽")).toBeDefined();
+    });
+
+    it("follows the currency of an opened link", () => {
+      history.replaceState(null, "", `/#${LITERAL_CODE_RUB}`);
+
+      remountApp("en");
+
+      expect(findCurrencySelect().value).toBe("RUB");
+    });
+
+    it("follows the address when it changes on an open page", () => {
+      remountApp("en");
+
+      changeAddressOnPage(`/#${LITERAL_CODE_RUB}`);
+
+      expect(findCurrencySelect().value).toBe("RUB");
+    });
+  });
+
+  describe("choosing", () => {
+    beforeEach(() => {
+      remountApp("en");
+      addEnglishParticipant("Ann");
+      addEnglishParticipant("Bob");
+      addEnglishExpense("Ann", "900");
+    });
+
+    it("changes all the amounts and the label of the amount field", () => {
+      chooseCurrency("RUB");
+
+      expect(readExpenses(ENGLISH_SECTIONS.expenses)).toEqual([
+        "Ann — ₽900.00, for everyone",
+      ]);
+      expect(readEnglishOverview()).toEqual([
+        "2 participants",
+        "1 expense",
+        "spent ₽900.00",
+      ]);
+      expect(readSummary(ENGLISH_SECTIONS.summary)).toEqual([
+        "Bob → Ann: ₽450.00",
+      ]);
+      expect(findInput("Amount, ₽")).toBeDefined();
+    });
+
+    it("keeps the bill and its amounts as they were", () => {
+      chooseCurrency("RUB");
+      chooseCurrency("USD");
+
+      expect(readParticipantNames()).toEqual(["Ann", "Bob"]);
+      expect(readExpenses(ENGLISH_SECTIONS.expenses)).toEqual([
+        "Ann — $900.00, for everyone",
+      ]);
+      expect(findInput("Amount, $")).toBeDefined();
+    });
+
+    it("writes the currency into the address together with the bill", () => {
+      chooseCurrency("RUB");
+
+      expect(readAddressCurrency()).toBe("RUB");
+      expect(decodeBill(location.hash.slice(1))).toMatchObject({
+        kind: "decoded",
+        bill: { participants: [{ name: "Ann" }, { name: "Bob" }] },
+      });
+    });
+
+    it("is kept by the address when the page is opened again", () => {
+      chooseCurrency("RUB");
+
+      remountApp("en");
+
+      expect(findCurrencySelect().value).toBe("RUB");
+      expect(readExpenses(ENGLISH_SECTIONS.expenses)).toEqual([
+        "Ann — ₽900.00, for everyone",
+      ]);
+    });
+  });
+
+  describe("choosing on the Russian page", () => {
+    it("changes the amounts and the label on the Russian page the same way", () => {
+      addParticipant("Аня");
+      addExpense("900");
+
+      chooseCurrency("USD");
+
+      expect(readExpenses()).toEqual(["Аня — 900,00 $, за всех"]);
+      expect(findInput("Сколько, $")).toBeDefined();
+      expect(readAddressCurrency()).toBe("USD");
+    });
+  });
+
+  describe("share", () => {
+    beforeEach(() => {
+      remountApp("en");
+      addEnglishParticipant("Ann");
+    });
+
+    it("clears the link field because the old link has the old currency", () => {
+      const linkField = openLinkField();
+      expect(linkField.value).not.toBe("");
+
+      chooseCurrency("RUB");
+
+      expect(linkField.closest<HTMLElement>(".field")?.hidden).toBe(true);
+      expect(linkField.value).toBe("");
+    });
+
+    it("clears the message about the copied link", async () => {
+      const writeText = vi.fn<(text: string) => Promise<void>>();
+      writeText.mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText },
+        configurable: true,
+      });
+      findButton("Share").click();
+      const message = findSection(ENGLISH_SECTIONS.share).querySelector(
+        ".message",
+      );
+      await vi.waitFor(() => {
+        expect(normalize(message?.textContent)).toBe("Link copied");
+      });
+
+      chooseCurrency("RUB");
+
+      expect(normalize(message?.textContent)).toBe("");
+    });
+
+    it("gives a new link with the chosen currency", () => {
+      openLinkField();
+      chooseCurrency("RUB");
+
+      const linkField = openLinkField();
+
+      const code = new URL(linkField.value).hash.slice(1);
+      expect(decodeBill(code)).toMatchObject({
+        kind: "decoded",
+        bill: { participants: [{ name: "Ann" }], expenses: [] },
+        currency: "RUB",
+      });
+    });
+  });
+
+  describe("language link", () => {
+    function readLanguageLinkHash(): string {
+      const link = root.querySelector<HTMLAnchorElement>(".language-link");
+      if (link === null) throw new Error("Language link not found");
+
+      return new URL(link.getAttribute("href") ?? "", location.href).hash;
+    }
+
+    it("carries the chosen currency of an empty bill", () => {
+      remountApp("en");
+
+      chooseCurrency("RUB");
+
+      expect(decodeBill(readLanguageLinkHash().slice(1))).toMatchObject({
+        kind: "decoded",
+        bill: EMPTY_BILL,
+        currency: "RUB",
+      });
+    });
+
+    it("loses the fragment again when the page currency is chosen back", () => {
+      remountApp("en");
+      chooseCurrency("RUB");
+
+      chooseCurrency("USD");
+
+      expect(readLanguageLinkHash()).toBe("");
+    });
   });
 });
 

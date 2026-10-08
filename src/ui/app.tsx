@@ -44,6 +44,11 @@ export function App(props: AppProps) {
     writeBillCode(encodeBill(changedBill, currency()));
   }
 
+  function changeCurrency(changedCurrency: Currency): void {
+    setCurrency(changedCurrency);
+    writeBillCode(encodeBill(bill(), changedCurrency));
+  }
+
   function showOpenedBill(openedBill: Bill, openedCurrency: Currency): void {
     setBill(openedBill);
     setCurrency(openedCurrency);
@@ -63,7 +68,7 @@ export function App(props: AppProps) {
     setNotice((current) => ({ ...current, isHidden: true }));
   }
 
-  /** The address is not written here: it changes only together with the bill. */
+  /** The address is not written here: it changes only when the user edits the bill or its currency. */
   function openBillFromAddress(): void {
     const code = readBillCode();
     if (code === undefined) {
@@ -94,7 +99,11 @@ export function App(props: AppProps) {
 
   return (
     <LocaleContext.Provider value={{ locale, messages }}>
-      <PageHeader bill={bill()} currency={currency()} />
+      <PageHeader
+        bill={bill()}
+        currency={currency()}
+        onCurrencyChange={changeCurrency}
+      />
       <LinkNotice
         text={notice().text}
         isHidden={notice().isHidden}
