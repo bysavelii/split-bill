@@ -11,7 +11,7 @@
   "type": "session",
   "data": {
     "title": "Skeleton of \"Split the bill\": Vite, TypeScript and make check",
-    "language": "ru",
+    "language": "en",
     "workflow": "default",
     "harness": "0.7.1",
     "events": [

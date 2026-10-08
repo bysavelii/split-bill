@@ -11,7 +11,7 @@
   "type": "session",
   "data": {
     "title": "Announcing the summary and the captions of the expense delete buttons",
-    "language": "ru",
+    "language": "en",
     "workflow": "default",
     "harness": "0.7.1",
     "events": [

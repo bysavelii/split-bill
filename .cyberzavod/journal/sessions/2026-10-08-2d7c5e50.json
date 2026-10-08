@@ -11,7 +11,7 @@
   "type": "session",
   "data": {
     "title": "Friendlier input and our own arrow on the select",
-    "language": "ru",
+    "language": "en",
     "workflow": "default",
     "harness": "0.7.1",
     "events": [
