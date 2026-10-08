@@ -60,6 +60,15 @@ function selectPayer(name: string): void {
   select.value = option.value;
 }
 
+function addParticipants(...names: string[]): void {
+  for (const name of names) addParticipant(name);
+}
+
+function addExpenseBy(payer: string, amount: string): void {
+  selectPayer(payer);
+  addExpense(amount);
+}
+
 function uncheckBeneficiary(name: string): void {
   const label = [...root.querySelectorAll("label.checkbox")].find(
     (candidate) => normalize(candidate.textContent) === name,
@@ -101,6 +110,32 @@ function readSummarySection(): HTMLElement {
   const summary = root.querySelectorAll("section")[2];
   if (summary === undefined) throw new Error("Не найдена секция «Итог»");
   return summary;
+}
+
+function findAnnouncement(): HTMLElement {
+  const announcement =
+    readSummarySection().querySelector<HTMLElement>("[aria-live]");
+  if (announcement === null) throw new Error("Не найдена область объявлений");
+  return announcement;
+}
+
+function readAnnouncement(): string {
+  return normalize(findAnnouncement().textContent);
+}
+
+function readRemoveExpenseLabels(): string[] {
+  const expenses = root.querySelectorAll("section")[1];
+  const buttons = [...(expenses?.querySelectorAll("button[aria-label]") ?? [])];
+  return buttons.map((button) => normalize(button.getAttribute("aria-label")));
+}
+
+function findRemoveExpenseButton(description: string): HTMLButtonElement {
+  const label = `Удалить трату: ${description}`;
+  const button = [...root.querySelectorAll("button")].find(
+    (candidate) => normalize(candidate.getAttribute("aria-label")) === label,
+  );
+  if (button === undefined) throw new Error(`Не найдена кнопка «${label}»`);
+  return button;
 }
 
 function readBreakdown(): string[] {
@@ -166,7 +201,7 @@ describe("сценарий деления счёта", () => {
       "Аня — 900,00 ₽, за всех",
     ]);
 
-    findByLabel("Удалить трату").click();
+    findRemoveExpenseButton("Аня — 900,00 ₽, за всех").click();
 
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
@@ -245,15 +280,6 @@ describe("сценарий деления счёта", () => {
 describe("объяснение итога", () => {
   const ROUNDING_TEXT =
     "Когда трата не делится поровну до копейки, у тех, кто выше в списке участников, доля на копейку больше.";
-
-  function addParticipants(...names: string[]): void {
-    for (const name of names) addParticipant(name);
-  }
-
-  function addExpenseBy(payer: string, amount: string): void {
-    selectPayer(payer);
-    addExpense(amount);
-  }
 
   it("для одного платившего за всех показывает разбор", () => {
     addParticipants("Аня", "Боря", "Вера");
@@ -388,6 +414,116 @@ describe("объяснение итога", () => {
     expect(readSummarySection().querySelector("h3")).toBeNull();
     expect(readSummarySection().querySelector(".breakdown")).toBeNull();
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
+  });
+});
+
+describe("подписи кнопок удаления трат", () => {
+  it("различают траты одного плательщика, и нажатие удаляет именно выбранную", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+    addExpense("300");
+
+    expect(readRemoveExpenseLabels()).toEqual([
+      "Удалить трату: Аня — 900,00 ₽, за всех",
+      "Удалить трату: Аня — 300,00 ₽, за всех",
+    ]);
+
+    findRemoveExpenseButton("Аня — 300,00 ₽, за всех").click();
+
+    expect(readTexts("section:nth-of-type(2) li span")).toEqual([
+      "Аня — 900,00 ₽, за всех",
+    ]);
+  });
+});
+
+describe("доступность итога", () => {
+  /** Записи об изменениях области объявлений с момента вызова. */
+  function observeAnnouncement(): MutationObserver {
+    const observer = new MutationObserver(() => undefined);
+    observer.observe(findAnnouncement(), {
+      childList: true,
+      characterData: true,
+      subtree: true,
+      attributes: true,
+    });
+    return observer;
+  }
+
+  it("живая область одна: скрытая, вежливая и читается целиком", () => {
+    const liveAreas = readSummarySection().querySelectorAll("[aria-live]");
+
+    expect(readSummarySection().hasAttribute("aria-live")).toBe(false);
+    expect(liveAreas).toHaveLength(1);
+    expect(liveAreas[0]?.getAttribute("aria-live")).toBe("polite");
+    expect(liveAreas[0]?.getAttribute("aria-atomic")).toBe("true");
+    expect(liveAreas[0]?.classList.contains("visually-hidden")).toBe(true);
+  });
+
+  it("без трат сообщает, что трат пока нет", () => {
+    expect(readAnnouncement()).toBe("Итог: трат пока нет");
+  });
+
+  it("объявляет число переводов, а не сами переводы и пояснения", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    expect(readAnnouncement()).toBe("Итог: 2 перевода");
+  });
+
+  it("при взаимных долгах объявляет один перевод", () => {
+    addParticipants("Аня", "Боря");
+    uncheckBeneficiary("Аня");
+    addExpenseBy("Аня", "700");
+    uncheckBeneficiary("Боря");
+    addExpenseBy("Боря", "300");
+
+    expect(readAnnouncement()).toBe("Итог: 1 перевод");
+  });
+
+  it("когда переводы не нужны, объявляет, что все в расчёте", () => {
+    addParticipants("Аня");
+    addExpenseBy("Аня", "500");
+
+    expect(readAnnouncement()).toBe("Итог: все в расчёте, переводы не нужны");
+  });
+
+  it("после удаления последней траты снова объявляет, что трат нет", () => {
+    addParticipants("Аня");
+    addExpenseBy("Аня", "500");
+
+    findRemoveExpenseButton("Аня — 500,00 ₽, за всех").click();
+
+    expect(readAnnouncement()).toBe("Итог: трат пока нет");
+  });
+
+  it("не переписывает область, когда добавляют участников без трат", () => {
+    addParticipants("Аня");
+    const observer = observeAnnouncement();
+
+    addParticipants("Боря", "Вера");
+
+    expect(observer.takeRecords()).toEqual([]);
+    observer.disconnect();
+  });
+
+  it("не переписывает область, когда число переводов не изменилось", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+    const observer = observeAnnouncement();
+
+    addExpenseBy("Аня", "300");
+
+    expect(readSummary()).toHaveLength(2);
+    expect(readAnnouncement()).toBe("Итог: 2 перевода");
+    expect(observer.takeRecords()).toEqual([]);
+    observer.disconnect();
+  });
+
+  it("не вкладывает живые области друг в друга", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    expect(root.querySelectorAll("[aria-live] [aria-live]")).toHaveLength(0);
   });
 });
 
@@ -754,6 +890,43 @@ describe("ссылка на счёт", () => {
 
       expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
       expect(readSummary()).toEqual(["Боря → Аня: 450,00 ₽"]);
+    });
+
+    it("обновляет сводку для диктора по новому счёту", () => {
+      const lunch: Bill = {
+        participants: [anna, boris],
+        expenses: [
+          {
+            id: "a",
+            payerId: anna.id,
+            amount: 70_000,
+            beneficiaryIds: [boris.id],
+          },
+          {
+            id: "b",
+            payerId: boris.id,
+            amount: 30_000,
+            beneficiaryIds: [anna.id],
+          },
+        ],
+      };
+      openCode(encodeBill(billWithDinner));
+      expect(readAnnouncement()).toBe("Итог: 1 перевод");
+
+      changeAddressOnPage(encodeBill({ participants: [anna], expenses: [] }));
+      expect(readAnnouncement()).toBe("Итог: трат пока нет");
+
+      changeAddressOnPage(encodeBill(lunch));
+      expect(readAnnouncement()).toBe("Итог: 1 перевод");
+    });
+
+    it("при битом коде сводка для диктора сообщает, что трат нет", () => {
+      openCode(encodeBill(billWithDinner));
+      expect(readAnnouncement()).toBe("Итог: 1 перевод");
+
+      changeAddressOnPage("1.!!!");
+
+      expect(readAnnouncement()).toBe("Итог: трат пока нет");
     });
 
     it("при битом коде показывает сообщение и пустой счёт", () => {

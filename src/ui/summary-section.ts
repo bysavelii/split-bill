@@ -15,6 +15,7 @@ import {
   SHARE_NOTE,
   describeParticipantTotals,
   describeTransferCount,
+  formatTransferCount,
 } from "./settlement-explanation";
 
 const NO_EXPENSES_TEXT =
@@ -22,17 +23,37 @@ const NO_EXPENSES_TEXT =
 const NO_TRANSFERS_TEXT = "Все в расчёте — переводы не нужны";
 const BREAKDOWN_TITLE = "Как посчитано";
 
+const NO_EXPENSES_ANNOUNCEMENT = "Итог: трат пока нет";
+const NO_TRANSFERS_ANNOUNCEMENT = "Итог: все в расчёте, переводы не нужны";
+
 export function createSummarySection(): Section {
   const content = createElement("div");
-  const element = createElement(
-    "section",
-    { attributes: { "aria-live": "polite" } },
-    [createElement("h2", { text: "Итог" }), content],
-  );
+  // Диктор объявляет только эту короткую сводку, а не всю секцию. Область
+  // создаётся с текстом пустого счёта, чтобы при загрузке ничего не объявлялось
+  // лишний раз. Изменения после загрузки (правки счёта, переход по другой
+  // ссылке через hashchange) объявляются.
+  const announcement = createElement("div", {
+    className: "visually-hidden",
+    text: NO_EXPENSES_ANNOUNCEMENT,
+    attributes: { "aria-live": "polite", "aria-atomic": "true" },
+  });
+  const element = createElement("section", {}, [
+    createElement("h2", { text: "Итог" }),
+    announcement,
+    content,
+  ]);
+
+  function announce(text: string): void {
+    // Повторная запись того же текста заставила бы диктор прочитать его снова.
+    if (announcement.textContent === text) return;
+
+    announcement.textContent = text;
+  }
 
   function render(bill: Bill): void {
     if (bill.expenses.length === 0) {
       content.replaceChildren(createElement("p", { text: NO_EXPENSES_TEXT }));
+      announce(NO_EXPENSES_ANNOUNCEMENT);
       return;
     }
 
@@ -42,9 +63,16 @@ export function createSummarySection(): Section {
     const transferNodes = createTransferNodes(bill, plan);
     const breakdownNodes = createBreakdownNodes(bill, balances);
     content.replaceChildren(...transferNodes, ...breakdownNodes);
+    announce(describeTransferTotal(plan));
   }
 
   return { element, render };
+}
+
+function describeTransferTotal(plan: TransferPlan): string {
+  if (plan.transfers.length === 0) return NO_TRANSFERS_ANNOUNCEMENT;
+
+  return `Итог: ${formatTransferCount(plan.transfers.length)}`;
 }
 
 function createTransferNodes(bill: Bill, plan: TransferPlan): HTMLElement[] {
