@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-91940741",
+  "timestamp": "2026-10-08T10:13:18.665Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Type checking is astro check alone (it covers .astro, .ts and .tsx); tsc --noEmit was removed",
+    "description": "One command instead of two overlapping ones"
+  }
+}

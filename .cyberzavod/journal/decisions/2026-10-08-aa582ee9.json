@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-aa582ee9",
+  "timestamp": "2026-10-08T10:13:18.595Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "The interface is one Solid island (<App client:load />) inside a static Astro page; the server renders an empty bill and the address is read only in onMount",
+    "description": "All parts depend on one bill state, and reading location during SSR would break hydration"
+  }
+}

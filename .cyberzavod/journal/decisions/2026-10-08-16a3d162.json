@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-16a3d162",
+  "timestamp": "2026-10-08T10:13:18.736Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Everything except UI texts is in English: code comments, test names, internal error messages, commits, docs, PR descriptions and new journal entries; UI texts stay Russian until the languages task",
+    "description": "Issue #9; old commits and past journal entries are left as they are"
+  }
+}
