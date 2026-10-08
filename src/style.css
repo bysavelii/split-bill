@@ -46,6 +46,7 @@
   --font-size-section-title: 1.25rem;
   --font-size-body: 1rem;
   --font-size-caption: 0.875rem;
+  --font-size-small: 0.8125rem;
 
   /* 44 px — минимальный размер цели касания для пальца. */
   --touch-target: 2.75rem;
@@ -116,20 +117,26 @@ main {
   color: var(--color-text-muted);
 }
 
+/* Точка-разделитель стоит левее пункта, в промежутке; при переносе строки она
+   оказывается за краем сводки и обрезается, а не висит в начале строки. */
 .overview {
   display: flex;
   flex-wrap: wrap;
+  gap: 0 var(--space-4);
   margin: 0;
+  overflow: hidden;
   font-size: var(--font-size-caption);
   font-weight: 600;
 }
 
 .overview-item {
+  position: relative;
   white-space: nowrap;
 }
 
 .overview-item + .overview-item::before {
-  margin: 0 var(--space-2);
+  position: absolute;
+  left: calc(-1 * var(--space-2) - 0.15em);
   font-weight: 400;
   color: var(--color-text-muted);
   content: "·";
@@ -144,6 +151,9 @@ main {
 }
 
 section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   padding: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -162,12 +172,12 @@ h1 {
 }
 
 h2 {
-  margin-bottom: var(--space-3);
+  margin-bottom: 0;
   font-size: var(--font-size-section-title);
 }
 
 p {
-  margin: 0 0 var(--space-3);
+  margin: 0;
 }
 
 :focus-visible {
@@ -243,6 +253,12 @@ legend {
   border-radius: var(--radius-pill);
 }
 
+/* Пустой список не должен добавлять лишний промежуток между блоками секции. */
+.chips:empty,
+.expenses:empty {
+  display: none;
+}
+
 .participant-name {
   min-width: 0;
   font-weight: 500;
@@ -293,7 +309,7 @@ legend {
 
 .expenses {
   padding: 0;
-  margin: var(--space-3) 0 0;
+  margin: 0;
   list-style: none;
 }
 
@@ -422,21 +438,26 @@ input[readonly] {
 }
 
 .message {
-  min-height: 1.5em;
   margin: 0;
   font-size: var(--font-size-caption);
   color: var(--color-error);
+}
+
+/* Пустая область для диктора остаётся в разметке, но не добавляет промежуток. */
+.message:empty {
+  margin-bottom: calc(-1 * var(--space-3));
 }
 
 .message.message-success {
   color: var(--color-accent);
 }
 
-.summary-status {
-  margin-bottom: var(--space-4);
+.summary-status + .breakdown {
+  margin-top: var(--space-4);
 }
 
 .transfers-count {
+  margin-bottom: var(--space-3);
   font-weight: 600;
 }
 
@@ -511,11 +532,25 @@ input[readonly] {
 .breakdown td {
   padding: var(--space-2) var(--space-1);
   text-align: right;
+  /* Без этого перенос шёл бы посреди слова и после пробела перед «₽». */
+  overflow-wrap: normal;
   border-bottom: 1px solid var(--color-border);
 }
 
 .breakdown th:first-child {
+  padding-left: 0;
   text-align: left;
+}
+
+/* Длинное имя переносится, а не раздвигает таблицу; короткое не ломается посреди слова. */
+.breakdown tbody th {
+  max-width: 7rem;
+  overflow-wrap: anywhere;
+}
+
+.breakdown th:last-child,
+.breakdown td:last-child {
+  padding-right: 0;
 }
 
 .breakdown thead th {
@@ -544,8 +579,15 @@ input[readonly] {
   color: var(--color-text-muted);
 }
 
-.note {
+.breakdown > p {
+  margin-bottom: var(--space-3);
+}
+
+.breakdown > .note {
   margin: var(--space-2) 0 0;
+}
+
+.note {
   font-size: var(--font-size-caption);
   color: var(--color-text-muted);
 }
@@ -636,6 +678,26 @@ input[readonly] {
       color var(--duration-fast),
       filter var(--duration-fast),
       opacity var(--duration-fast);
+  }
+}
+
+/* На телефоне поля уже, чтобы таблица «Как посчитано» помещалась без прокрутки при 360 px. */
+@media (max-width: 480px) {
+  main {
+    padding-inline: var(--space-3);
+  }
+
+  section {
+    padding: var(--space-3);
+  }
+
+  .breakdown table {
+    font-size: var(--font-size-small);
+  }
+
+  .breakdown th,
+  .breakdown td {
+    padding-inline: var(--space-1);
   }
 }
 
