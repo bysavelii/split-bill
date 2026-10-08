@@ -54,7 +54,7 @@
   --avatar-size: 1.75rem;
   --column-width: 40rem;
   --column-width-wide: 72rem;
-  /* Limit of the name width in the "Как посчитано" table: a longer name wraps. */
+  /* Limit of the name width in the "How it is calculated" table: a longer name wraps. */
   --breakdown-name-width: 7rem;
   /* Gap to the left of the table's numeric column: narrower on a phone so the amounts do not merge and the table fits. */
   --breakdown-column-gap: var(--space-5);
@@ -806,7 +806,7 @@ fieldset > .field-error:not(:empty) {
   }
 }
 
-/* On a phone the margins are narrower so the "Как посчитано" table fits without scrolling at 360 px. */
+/* On a phone the margins are narrower so the "How it is calculated" table fits without scrolling at 360 px. */
 @media (max-width: 480px) {
   main {
     padding-inline: var(--space-2);
