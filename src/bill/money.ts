@@ -1,7 +1,7 @@
 /** Сумма в копейках: всегда целое число. */
 export type Kopecks = number;
 
-export const KOPECKS_PER_RUBLE = 100;
+const KOPECKS_PER_RUBLE = 100;
 
 const MAX_KOPECK_DIGITS = 2;
 const WHITESPACE = /\s/gu;
