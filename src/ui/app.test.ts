@@ -639,7 +639,7 @@ describe("карточки переводов", () => {
   });
 
   it("подсказка в итоге видна без трат и когда все в расчёте", () => {
-    const summaryHint = (): string | undefined =>
+    const summaryHint = (): string =>
       normalize(
         readSummarySection().querySelector(".empty-state")?.textContent,
       );
