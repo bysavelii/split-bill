@@ -60,7 +60,7 @@ describe("readInitial", () => {
     ["аня", "А"],
     ["  Боря", "Б"],
     ["👩‍👩‍👧 Ок", "👩‍👩‍👧"],
-  ])('takes "%s" from "%s"', (name, expected) => {
+  ])('from "%s" takes "%s"', (name, expected) => {
     expect(readInitial(name)).toBe(expected);
   });
 
