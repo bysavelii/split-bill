@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-e4be9abc",
+  "timestamp": "2026-10-08T16:02:03.999Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "The language check allows Cyrillic in src/i18n/ru.ts only in string values, never in comments, names or keys; in src/i18n/locales.ts only in the Russian ownName; in .claude/settings.json only in the Stop hook's statusMessage",
+    "description": "A whole-file exception would let Russian creep into comments and other values of the reference project"
+  }
+}
