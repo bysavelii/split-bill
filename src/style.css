@@ -54,6 +54,11 @@
   --avatar-size: 1.75rem;
   --column-width: 40rem;
   --column-width-wide: 72rem;
+  /* Предел ширины имени в таблице «Как посчитано»: длиннее — переносится. */
+  --breakdown-name-width: 7rem;
+  /* Точка-разделитель между пунктами обзора стоит левее пункта на отступ и на поправку к ширине самой точки. */
+  --overview-separator-offset: calc(-1 * var(--space-2) - 0.15em);
+  --button-hover-brightness: 0.92;
   --duration-fast: 150ms;
 }
 
@@ -136,7 +141,7 @@ main {
 
 .overview-item + .overview-item::before {
   position: absolute;
-  left: calc(-1 * var(--space-2) - 0.15em);
+  left: var(--overview-separator-offset);
   font-weight: 400;
   color: var(--color-text-muted);
   content: "·";
@@ -399,7 +404,7 @@ input[readonly] {
 }
 
 .button-primary:hover {
-  filter: brightness(0.92);
+  filter: brightness(var(--button-hover-brightness));
 }
 
 .button-secondary {
@@ -544,7 +549,7 @@ input[readonly] {
 
 /* Длинное имя переносится, а не раздвигает таблицу; короткое не ломается посреди слова. */
 .breakdown tbody th {
-  max-width: 7rem;
+  max-width: var(--breakdown-name-width);
   overflow-wrap: anywhere;
 }
 
