@@ -2,9 +2,10 @@ import { calculateTotalSpent } from "../bill/bill";
 import { formatCount } from "../i18n/format";
 import { useAmountFormatter } from "./amount-formatter";
 import type { BillViewProps } from "./bill-props";
+import { LanguageSwitch } from "./language-switch";
 import { useLocale } from "./locale-context";
 
-/** The header: the title, the subtitle and the bill overview in one line. */
+/** The header: the toolbar, the title, the subtitle and the bill overview in one line. */
 export function PageHeader(props: BillViewProps) {
   const { locale, messages } = useLocale();
   const formatAmount = useAmountFormatter(() => props.currency);
@@ -22,6 +23,9 @@ export function PageHeader(props: BillViewProps) {
 
   return (
     <header class="page-header">
+      <div class="page-toolbar">
+        <LanguageSwitch bill={props.bill} currency={props.currency} />
+      </div>
       <h1>{messages.header.title}</h1>
       <p class="page-subtitle">{messages.header.subtitle}</p>
       <p class="overview">

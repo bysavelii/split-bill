@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_NAME_LENGTH, type Bill } from "../bill/bill";
+import { EMPTY_BILL, MAX_NAME_LENGTH, type Bill } from "../bill/bill";
 import { encodeBase64Url } from "../sharing/base64-url";
 import type { Locale } from "../i18n/locales";
 import { decodeBill, encodeBill } from "../sharing/bill-code";
@@ -223,6 +223,12 @@ function remountApp(locale: Locale = "ru"): void {
   unmountApp = render(() => <App locale={locale} />, {
     container: root,
   }).unmount;
+}
+
+/** Changes the address of the open page the way following a link with another fragment does. */
+function changeAddressOnPage(address: string): void {
+  history.replaceState(null, "", address);
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
 }
 
 beforeEach(() => {
@@ -946,11 +952,6 @@ describe("bill link", () => {
     openAddress(`/#${code}`);
   }
 
-  function changeAddressOnPage(code: string): void {
-    history.replaceState(null, "", `/#${code}`);
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-  }
-
   function readNotice(): HTMLElement | null {
     return root.querySelector<HTMLElement>(".notice");
   }
@@ -1135,7 +1136,7 @@ describe("bill link", () => {
       expect(readParticipantNames()).toEqual([]);
       expect(readSummary()).toEqual([EMPTY_SUMMARY]);
 
-      changeAddressOnPage(encodeBill(billWithDinner, "RUB"));
+      changeAddressOnPage(`/#${encodeBill(billWithDinner, "RUB")}`);
 
       expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
     });
@@ -1191,7 +1192,7 @@ describe("bill link", () => {
 
   describe("address change on an open page", () => {
     it("shows the bill from a new valid code", () => {
-      changeAddressOnPage(encodeBill(billWithDinner, "RUB"));
+      changeAddressOnPage(`/#${encodeBill(billWithDinner, "RUB")}`);
 
       expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
       expect(readSummary()).toEqual(["Боря → Аня: 450,00 ₽"]);
@@ -1219,11 +1220,11 @@ describe("bill link", () => {
       expect(readAnnouncement()).toBe("Итог: 1 перевод");
 
       changeAddressOnPage(
-        encodeBill({ participants: [anna], expenses: [] }, "RUB"),
+        `/#${encodeBill({ participants: [anna], expenses: [] }, "RUB")}`,
       );
       expect(readAnnouncement()).toBe("Итог: трат пока нет");
 
-      changeAddressOnPage(encodeBill(lunch, "RUB"));
+      changeAddressOnPage(`/#${encodeBill(lunch, "RUB")}`);
       expect(readAnnouncement()).toBe("Итог: 1 перевод");
     });
 
@@ -1231,7 +1232,7 @@ describe("bill link", () => {
       openCode(encodeBill(billWithDinner, "RUB"));
       expect(readAnnouncement()).toBe("Итог: 1 перевод");
 
-      changeAddressOnPage("1.!!!");
+      changeAddressOnPage("/#1.!!!");
 
       expect(readAnnouncement()).toBe("Итог: трат пока нет");
     });
@@ -1239,7 +1240,7 @@ describe("bill link", () => {
     it("with a broken code shows the message and an empty bill", () => {
       addParticipant("Аня");
 
-      changeAddressOnPage("1.!!!");
+      changeAddressOnPage("/#1.!!!");
 
       expect(readNoticeText()).toBe(MALFORMED_NOTICE);
       expect(readParticipantNames()).toEqual([]);
@@ -1248,7 +1249,7 @@ describe("bill link", () => {
     it("with a valid code hides the previous message", () => {
       openCode("1.!!!");
 
-      changeAddressOnPage(encodeBill(billWithDinner, "RUB"));
+      changeAddressOnPage(`/#${encodeBill(billWithDinner, "RUB")}`);
 
       expect(readNotice()?.hidden).toBe(true);
     });
@@ -1256,7 +1257,7 @@ describe("bill link", () => {
     it("with an empty fragment shows an empty bill", () => {
       openCode(encodeBill(billWithDinner, "RUB"));
 
-      changeAddressOnPage("");
+      changeAddressOnPage("/");
 
       expect(readParticipantNames()).toEqual([]);
     });
@@ -1264,7 +1265,7 @@ describe("bill link", () => {
     it("does not write the address, so it causes no loop", () => {
       const code = encodeBill(billWithDinner, "RUB");
 
-      changeAddressOnPage(code);
+      changeAddressOnPage(`/#${code}`);
 
       expect(location.hash).toBe(`#${code}`);
     });
@@ -1272,7 +1273,7 @@ describe("bill link", () => {
     it("after the app is removed stops reacting to the address", () => {
       unmountApp();
 
-      changeAddressOnPage(encodeBill(billWithDinner, "RUB"));
+      changeAddressOnPage(`/#${encodeBill(billWithDinner, "RUB")}`);
 
       expect(readParticipantNames()).toEqual([]);
     });
@@ -1466,19 +1467,19 @@ describe("share links from the previous version", () => {
   });
 });
 
+function addEnglishParticipant(name: string): void {
+  fireEvent.input(findInput("Name"), { target: { value: name } });
+  findButton("Add").click();
+}
+
+function addEnglishExpense(payer: string, amount: string): void {
+  selectPayer(payer);
+  fireEvent.input(findInput("Amount, $"), { target: { value: amount } });
+  findButton("Add expense").click();
+}
+
 describe("English page", () => {
   const SECTIONS = ENGLISH_SECTIONS;
-
-  function addEnglishParticipant(name: string): void {
-    fireEvent.input(findInput("Name"), { target: { value: name } });
-    findButton("Add").click();
-  }
-
-  function addEnglishExpense(payer: string, amount: string): void {
-    selectPayer(payer);
-    fireEvent.input(findInput("Amount, $"), { target: { value: amount } });
-    findButton("Add expense").click();
-  }
 
   function readEnglishOverview(): string[] {
     return readTexts(".page-header .overview-item");
@@ -1637,11 +1638,6 @@ describe("currency of an opened bill on the Russian page", () => {
     remountApp("ru");
   }
 
-  function changeAddressOnPage(address: string): void {
-    history.replaceState(null, "", address);
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-  }
-
   it("shows the amounts of the link in dollars, not in rubles", () => {
     openUsdLink();
 
@@ -1696,6 +1692,153 @@ describe("currency of an opened bill on the Russian page", () => {
       "Ann — 123,45 ₽, за всех",
       "Bob — 5,00 ₽, за: Bob",
     ]);
+  });
+});
+
+describe("language switch", () => {
+  function findLanguageLink(): HTMLAnchorElement {
+    const link = root.querySelector<HTMLAnchorElement>(
+      ".page-toolbar .language-link",
+    );
+    if (link === null) throw new Error("Language link not found");
+
+    return link;
+  }
+
+  /** The address the link opens, as a browser resolves it on the page. */
+  function readLanguageLinkAddress(): URL {
+    return new URL(
+      findLanguageLink().getAttribute("href") ?? "",
+      location.href,
+    );
+  }
+
+  /** Follows the link: the other page opens at the address of the link, the app starts there. */
+  function followLanguageLink(locale: Locale): void {
+    const address = readLanguageLinkAddress();
+    history.replaceState(null, "", `${address.pathname}${address.hash}`);
+    remountApp(locale);
+  }
+
+  describe("link", () => {
+    it("leads from the English page to the Russian one and says so", () => {
+      remountApp("en");
+
+      const link = findLanguageLink();
+
+      expect(link.textContent).toBe("Русский");
+      expect(link.getAttribute("lang")).toBe("ru");
+      expect(link.getAttribute("hreflang")).toBe("ru");
+      expect(link.getAttribute("href")).toBe("/ru/");
+    });
+
+    it("leads from the Russian page to the English one and says so", () => {
+      const link = findLanguageLink();
+
+      expect(link.textContent).toBe("English");
+      expect(link.getAttribute("lang")).toBe("en");
+      expect(link.getAttribute("hreflang")).toBe("en");
+      expect(link.getAttribute("href")).toBe("/");
+    });
+
+    it("has no fragment while the bill is untouched and in the currency of the page", () => {
+      remountApp("en");
+
+      expect(readLanguageLinkAddress().hash).toBe("");
+    });
+
+    it("carries the bill and its currency once a participant is added", () => {
+      remountApp("en");
+
+      addEnglishParticipant("Ann");
+
+      const result = decodeBill(readLanguageLinkAddress().hash.slice(1));
+      expect(result).toMatchObject({
+        kind: "decoded",
+        bill: { participants: [{ name: "Ann" }], expenses: [] },
+        currency: "USD",
+      });
+    });
+
+    it("carries the currency of an empty bill that is not the currency of the page", () => {
+      history.replaceState(null, "", `/#${encodeBill(EMPTY_BILL, "RUB")}`);
+
+      remountApp("en");
+
+      const result = decodeBill(readLanguageLinkAddress().hash.slice(1));
+      expect(result).toMatchObject({
+        kind: "decoded",
+        bill: EMPTY_BILL,
+        currency: "RUB",
+      });
+    });
+
+    it("loses the fragment again when the address returns to an empty bill", () => {
+      remountApp("en");
+      addEnglishParticipant("Ann");
+
+      changeAddressOnPage("/");
+
+      expect(readLanguageLinkAddress().hash).toBe("");
+    });
+  });
+
+  describe("following the link", () => {
+    it("keeps a bill in dollars built on the English page", () => {
+      remountApp("en");
+      addEnglishParticipant("Ann");
+      addEnglishParticipant("Bob");
+      addEnglishExpense("Ann", "900");
+
+      followLanguageLink("ru");
+
+      expect(readParticipantNames()).toEqual(["Ann", "Bob"]);
+      expect(readExpenses()).toEqual(["Ann — 900,00 $, за всех"]);
+      expect(findInput("Сколько, $")).toBeDefined();
+    });
+
+    it("keeps a bill in rubles set up by a link on the English page", () => {
+      history.replaceState(null, "", `/#${LITERAL_CODE_RUB}`);
+      remountApp("en");
+      addEnglishParticipant("Cat");
+
+      followLanguageLink("ru");
+
+      expect(readParticipantNames()).toEqual(["Ann", "Bob", "Cat"]);
+      expect(readExpenses()).toEqual([
+        "Ann — 123,45 ₽, за: Ann, Bob",
+        "Bob — 5,00 ₽, за: Bob",
+      ]);
+      expect(readTexts(".page-header .overview-item")).toEqual([
+        "3 участника",
+        "2 траты",
+        "потрачено 128,45 ₽",
+      ]);
+    });
+
+    it("keeps a bill in rubles when going back to the English page", () => {
+      history.replaceState(null, "", `/#${LITERAL_CODE_RUB}`);
+      remountApp("ru");
+
+      followLanguageLink("en");
+
+      expect(readExpenses(ENGLISH_SECTIONS.expenses)).toEqual([
+        "Ann — ₽123.45, for everyone",
+        "Bob — ₽5.00, for: Bob",
+      ]);
+    });
+
+    it("opens an empty bill in the currency of the other page", () => {
+      remountApp("en");
+
+      followLanguageLink("ru");
+
+      expect(readTexts(".page-header .overview-item")).toEqual([
+        "0 участников",
+        "0 трат",
+        "потрачено 0,00 ₽",
+      ]);
+    });
   });
 });
 

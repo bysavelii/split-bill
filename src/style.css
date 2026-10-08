@@ -116,6 +116,26 @@ main {
   margin-bottom: var(--space-2);
 }
 
+/* The row wraps instead of overflowing a narrow screen. */
+.page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--space-2);
+}
+
+.language-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-2);
+  font-weight: 600;
+  color: var(--color-accent);
+  border-radius: var(--radius-control);
+}
+
 .page-header h1 {
   margin-bottom: var(--space-1);
 }
