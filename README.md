@@ -16,14 +16,14 @@ A web app for people who travel in a group or go to a cafe together: enter the e
 
 ## Running locally
 
-Node 22 or newer is required.
+Node 22.12 or newer is required. The site is built with [Astro](https://astro.build/); the interface is a single [Solid](https://www.solidjs.com/) island.
 
 ```sh
 npm ci            # install dependencies
-npm run dev       # dev server at http://localhost:5173/ — open the address in a browser
-make check        # checks: formatting, types, linter, tests, build
-npm run build     # build into the dist directory
-npm run preview   # look at the built app
+npm run dev       # dev server at http://localhost:4321/split-bill/ — open the address in a browser
+make check        # checks: formatting, types (astro check), linter, tests, build
+npm run build     # build the static site into the dist directory
+npm run preview   # look at the built app at http://localhost:4321/split-bill/
 npm run format    # format the code
 ```
 
@@ -32,12 +32,12 @@ npm run format    # format the code
 - `src/bill` — the bill: participants, expenses, amounts in kopecks.
 - `src/settlement` — the calculation: balances, shares and reducing debts to the minimal number of transfers.
 - `src/sharing` — encoding the bill into a link and parsing the link.
-- `src/ui` — the interface: page sections and DOM handling.
+- `src/ui` — the interface: Solid components (`*.tsx`) for the page sections and their plain TypeScript helpers.
+- `src/pages/index.astro` — the only page: a static shell with the `App` island (`<App client:load />`).
 - `src/style.css` — styles: tokens (colors of both themes, spacing, radii) and the layout for phone and computer; the rules are in AGENTS.md, section "Interface style".
-- `index.html` — the only page; it loads `src/main.ts`.
 - `.github/workflows` — checks on pull requests and deployment to GitHub Pages.
 
-Domain logic (`src/bill`, `src/settlement`, `src/sharing`) knows nothing about the DOM: ESLint enforces this.
+Domain logic (`src/bill`, `src/settlement`, `src/sharing`) knows nothing about the DOM, Solid and Astro: ESLint enforces this.
 
 ## Deploying to GitHub Pages
 
@@ -46,7 +46,7 @@ The site is deployed from the `main` branch by the workflow "Deploy to GitHub Pa
 1. In the repository open Settings → Pages → Build and deployment and choose Source: "GitHub Actions".
 2. Push to `main` or open Actions → "Deploy to GitHub Pages" → Run workflow (branch `main`: the `github-pages` environment by default allows deployment only from the default branch).
 
-The site address is `https://<owner>.github.io/split-bill/`. It appears in Settings → Pages and in the run summary of the "Deploy" job.
+`astro build` puts the site into `dist` with the base path `/split-bill/`, and the workflow publishes that directory. The site address is `https://<owner>.github.io/split-bill/`. It appears in Settings → Pages and in the run summary of the "Deploy" job.
 
 ## Limitations
 

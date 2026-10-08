@@ -6,7 +6,7 @@ Rules of this project for agents and people. The development process is set by C
 
 split-bill is the web app "Делим счёт" ("Split the bill"): a group enters expenses, and the app calculates who owes whom and how much, and reduces the settlements to the minimal number of transfers. For anyone who travels in a group or goes to a cafe together.
 
-- Programming language: TypeScript. Tools: Vite (build and dev server), Vitest (tests), ESLint (linter), Prettier (formatting). Node 22+.
+- Programming language: TypeScript. Stack: Astro (static site generation, build and dev server) with a single Solid island `<App client:load />` for the interface; Vitest with `@solidjs/testing-library` (tests), ESLint with `eslint-plugin-solid` (linter), Prettier with `prettier-plugin-astro` (formatting). Node 22.12+.
 - Language rules: UI texts are in Russian for now (languages come in a follow-up task). Everything else is in English: code comments, messages (errors, logs, tool output), test names, commit messages, the README, this file, PR descriptions and new journal entries. Identifiers (variables, functions, types, file names) are in English too. Old commits and past journal entries stay as they are.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), entirely in English. Example: `feat(settlement): reduce debts to the minimal number of transfers`.
 
@@ -14,7 +14,7 @@ split-bill is the web app "Делим счёт" ("Split the bill"): a group ente
 
 - Formatting: `npm run format`
 - Checks (`verification.commands` in `.cyberzavod/project.json`):
-  - `make check`
+  - `make check` (formatting check, `astro check` for types, ESLint, Vitest, `astro build`)
 
 ## Tasks
 
@@ -28,8 +28,8 @@ Where tasks live, how to read them and how to reference them in commits.
 
 Rules for code and tests of the project: the implementer writes by them, the tester and the reviewer check against them.
 
-- Domain logic lives in `src/bill`, `src/settlement` and `src/sharing` and knows nothing about the DOM: ESLint enforces this. The interface is in `src/ui`.
-- Tests live next to the code as `*.test.ts`; DOM tests are marked with `// @vitest-environment jsdom`.
+- Domain logic lives in `src/bill`, `src/settlement` and `src/sharing` and knows nothing about the DOM, Solid and Astro: ESLint forbids the DOM globals and the imports of `solid-js*`, `astro*` and the interface there. The interface is Solid components in `src/ui/*.tsx` and their plain TypeScript helpers; the only page is `src/pages/index.astro`, which renders the `App` island.
+- Tests live next to the code as `*.test.ts` and `*.test.tsx`; DOM tests are marked with `// @vitest-environment jsdom` and render components through `@solidjs/testing-library`. Vitest needs the settings from `vitest.config.js`: without them a second copy of Solid is loaded and nothing reacts.
 - Amounts are stored in kopecks as integers; they are converted to rubles only on input and on display.
 
 ## Interface style
@@ -72,7 +72,7 @@ Contrast (WCAG): text no lower than 4.5:1, controls and icons no lower than 3:1.
 ### Components
 
 - Buttons: `.button.button-primary` (filled with the accent: "Добавить", "Добавить трату", "Поделиться"), `.button.button-secondary` (outlined: "Закрыть"), `.icon-button` (a 44×44 cross without text, the name is in `aria-label`).
-- Avatar is a circle with the first letter of the name: `createAvatar` from `src/ui/avatar.ts`. The tone is taken from the name and is always the same.
+- Avatar is a circle with the first letter of the name: the `Avatar` component from `src/ui/avatar.tsx`. The tone is taken from the name and is always the same.
 - Chips: `.chip` is a participant with a cross; `.chip-toggle` is the "за кого" ("for whom") toggle on top of a real `input[type=checkbox]`.
 - Expense row `.expense`: the payer's avatar, the name and the caption "за всех" / "за: …" ("for everyone" / "for: …"), the amount on the right, a cross.
 - Summary: transfer cards `.transfer`, the `.transfers-count` line, the expandable `details.breakdown` block "Как посчитано" with a table. "Получает" (receives) and "отдаёт" (gives) differ by color, sign (+ and −) and word, not by color alone.
@@ -82,9 +82,9 @@ Contrast (WCAG): text no lower than 4.5:1, controls and icons no lower than 3:1.
 ### Rules
 
 - In CSS, tokens only; a new color or size first becomes a token, and for a color also a row of the contrast table.
-- The favicon (`public/favicon.svg`) and `<meta name="theme-color">` in `index.html` cannot see CSS variables and repeat the accent `#0E7C66` and the text `#1C1917` of the light theme: when these tokens change, they are changed together.
-- Icons only through `createIcon` from `src/ui/icons.ts`; they are hidden from screen readers (`aria-hidden`); there are no emoji in the interface.
-- Avatars only through `src/ui/avatar.ts`. The number of tones `AVATAR_TONE_COUNT` must match the number of `--color-avatar-N` in `style.css`.
+- The favicon (`public/favicon.svg`) and `<meta name="theme-color">` in `src/pages/index.astro` cannot see CSS variables and repeat the accent `#0E7C66` and the text `#1C1917` of the light theme: when these tokens change, they are changed together.
+- Icons only through the `Icon` component from `src/ui/icons.tsx`; they are hidden from screen readers (`aria-hidden`); there are no emoji in the interface.
+- Avatars only through `src/ui/avatar.tsx`. The number of tones `AVATAR_TONE_COUNT` must match the number of `--color-avatar-N` in `style.css`.
 - Focus is visible on all interactive elements (`:focus-visible`, a 2 px outline in the accent color); the touch target is at least 44 px.
 - Motion: 150 ms transitions on buttons and chips are declared only inside `@media (prefers-reduced-motion: no-preference)`.
 - Layout: up to 900 px one column (from 360 px, with no horizontal page scroll), from 900 px two; the right column is sticky and scrolls on its own when there is not enough height. The 900 px breakpoint is written as a literal in `@media`, because a variable does not work there.
@@ -96,8 +96,8 @@ Contrast (WCAG): text no lower than 4.5:1, controls and icons no lower than 3:1.
 
 Tests do not check the look, so after changing styles look at it with your own eyes:
 
-1. `npm run build`, then `npx vite preview --port 4173 --strictPort` in the background.
-2. Put the Playwright script in a temporary directory outside the repository and do not add it to the project dependencies. Open the page in Chromium with `colorScheme: "light"` and `"dark"` at widths 360, 768 and 1280 px: empty and filled (the example bill from the README, a link with the code after `#`), with "Как посчитано" closed and open, and with stress data: a 40-character name without spaces and five expenses.
+1. `npm run build`, then `npx astro preview --port 4173 --strictPort` in the background; the page is at `http://localhost:4173/split-bill/` (the site is built with the base path `/split-bill/`).
+2. Put the Playwright script in a temporary directory outside the repository and do not add Playwright (or screenshot-comparison libraries) to the project dependencies: use the globally installed Playwright (its directory is `npm root -g`). Open the page in Chromium with `colorScheme: "light"` and `"dark"` at widths 360, 768 and 1280 px: empty and filled (the example bill is the literal code from the test "share links from the previous version" in `src/ui/app.test.tsx`, put after `#` in the link), with "Как посчитано" closed and open, and with stress data: a 40-character name without spaces and five expenses.
 3. On each screenshot check `document.documentElement.scrollWidth <= window.innerWidth` and the sizes of buttons, chips and fields through `getBoundingClientRect` (at least 44 px).
 4. Take full-page screenshots (`fullPage`) and look at them: is there overflow, truncated captions, misaligned amounts, weak contrast, overlaps of the sticky column?
 5. Update the screenshots in `docs/` like this: `docs/screenshot.png` is the light theme, 390×844, scale 2, the first screen; `docs/screenshot-desktop.png` is the light theme, 1280×800, "Как посчитано" closed.
