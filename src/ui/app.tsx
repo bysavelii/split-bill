@@ -1,6 +1,8 @@
-import { createSignal, onCleanup, onMount } from "solid-js";
+import { createSignal, onCleanup, onMount, untrack } from "solid-js";
 import { EMPTY_BILL, type Bill } from "../bill/bill";
 import type { Currency } from "../bill/currency";
+import { DICTIONARIES } from "../i18n/dictionaries";
+import { LOCALE_DEFINITIONS, type Locale } from "../i18n/locales";
 import {
   decodeBill,
   encodeBill,
@@ -9,6 +11,7 @@ import {
 import { readBillCode, writeBillCode } from "./address";
 import { ExpensesSection } from "./expenses-section";
 import { describeBillCodeError, LinkNotice } from "./link-notice";
+import { LocaleContext } from "./locale-context";
 import { PageHeader } from "./page-header";
 import { ParticipantsSection } from "./participants-section";
 import { ShareSection } from "./share-section";
@@ -19,29 +22,41 @@ interface NoticeState {
   readonly isHidden: boolean;
 }
 
-// The only currency until the page can choose one.
-const BILL_CURRENCY: Currency = "RUB";
-
 const HIDDEN_NOTICE: NoticeState = { text: "", isHidden: true };
 
-export function App() {
+export interface AppProps {
+  readonly locale: Locale;
+}
+
+export function App(props: AppProps) {
+  // The language belongs to the page and does not change while the app lives, so it is read once.
+  const locale = untrack(() => props.locale);
+  const messages = DICTIONARIES[locale];
+  const { defaultCurrency } = LOCALE_DEFINITIONS[locale];
+
   // Any write redraws the sections, even of the same bill: messages and the link field are cleared.
   const [bill, setBill] = createSignal<Bill>(EMPTY_BILL, { equals: false });
+  const [currency, setCurrency] = createSignal<Currency>(defaultCurrency);
   const [notice, setNotice] = createSignal(HIDDEN_NOTICE);
 
   function changeBill(changedBill: Bill): void {
     setBill(changedBill);
-    writeBillCode(encodeBill(changedBill, BILL_CURRENCY));
+    writeBillCode(encodeBill(changedBill, currency()));
   }
 
-  function showOpenedBill(openedBill: Bill): void {
+  function showOpenedBill(openedBill: Bill, openedCurrency: Currency): void {
     setBill(openedBill);
+    setCurrency(openedCurrency);
     setNotice(HIDDEN_NOTICE);
   }
 
   function showRejectedLink(error: BillCodeError): void {
     setBill(EMPTY_BILL);
-    setNotice({ text: describeBillCodeError(error), isHidden: false });
+    setCurrency(defaultCurrency);
+    setNotice({
+      text: describeBillCodeError(error, messages),
+      isHidden: false,
+    });
   }
 
   function hideNotice(): void {
@@ -52,7 +67,7 @@ export function App() {
   function openBillFromAddress(): void {
     const code = readBillCode();
     if (code === undefined) {
-      showOpenedBill(EMPTY_BILL);
+      showOpenedBill(EMPTY_BILL, defaultCurrency);
       return;
     }
 
@@ -62,7 +77,8 @@ export function App() {
       return;
     }
 
-    showOpenedBill(result.bill);
+    // A link of the version without a currency has none: the page chooses its own.
+    showOpenedBill(result.bill, result.currency ?? defaultCurrency);
   }
 
   // The address does not exist while the page is rendered on the server and while it is hydrated,
@@ -77,8 +93,8 @@ export function App() {
   });
 
   return (
-    <>
-      <PageHeader bill={bill()} />
+    <LocaleContext.Provider value={{ locale, messages }}>
+      <PageHeader bill={bill()} currency={currency()} />
       <LinkNotice
         text={notice().text}
         isHidden={notice().isHidden}
@@ -86,18 +102,26 @@ export function App() {
       />
       <div class="layout">
         <div class="layout-main">
-          <ParticipantsSection bill={bill()} onBillChange={changeBill} />
-          <ExpensesSection bill={bill()} onBillChange={changeBill} />
+          <ParticipantsSection
+            bill={bill()}
+            currency={currency()}
+            onBillChange={changeBill}
+          />
+          <ExpensesSection
+            bill={bill()}
+            currency={currency()}
+            onBillChange={changeBill}
+          />
         </div>
         <div class="layout-side">
-          <SummarySection bill={bill()} />
+          <SummarySection bill={bill()} currency={currency()} />
           <ShareSection
             bill={bill()}
-            currency={BILL_CURRENCY}
+            currency={currency()}
             onBillChange={changeBill}
           />
         </div>
       </div>
-    </>
+    </LocaleContext.Provider>
   );
 }

@@ -310,7 +310,7 @@ function buildExpense(
       `The payer of expense ${String(expenseNumber)} is not a participant from the list`,
     );
   }
-  if (!isPositiveKopecks(amount)) {
+  if (!isPositiveMinorUnits(amount)) {
     return invalidBill(
       `The amount of expense ${String(expenseNumber)} is not a positive integer number of minor units`,
     );
@@ -414,7 +414,7 @@ function isParticipantIndex(
   );
 }
 
-function isPositiveKopecks(value: unknown): value is number {
+function isPositiveMinorUnits(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
 

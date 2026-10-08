@@ -1,9 +1,6 @@
 import type { BillCodeError } from "../sharing/bill-code";
-
-const MALFORMED_LINK_TEXT =
-  "Не получилось открыть счёт по ссылке: она повреждена или скопирована не целиком. Попросите прислать её ещё раз, а пока можно начать новый счёт.";
-const UNSUPPORTED_VERSION_TEXT =
-  "Эта ссылка сделана в другой версии приложения, и открыть её здесь не получится. Попросите прислать новую ссылку, а пока можно начать новый счёт.";
+import type { Messages } from "../i18n/messages";
+import { useLocale } from "./locale-context";
 
 export interface LinkNoticeProps {
   readonly text: string;
@@ -11,30 +8,35 @@ export interface LinkNoticeProps {
   readonly onClose: () => void;
 }
 
-export function describeBillCodeError(error: BillCodeError): string {
+export function describeBillCodeError(
+  error: BillCodeError,
+  messages: Messages,
+): string {
   switch (error.kind) {
     case "malformed":
     case "invalidBill":
-      return MALFORMED_LINK_TEXT;
+      return messages.linkNotice.malformed;
     case "unsupportedVersion":
-      return UNSUPPORTED_VERSION_TEXT;
+      return messages.linkNotice.unsupportedVersion;
   }
 }
 
-/** A message above the sections; "Закрыть" only hides it. */
+/** A message above the sections; the close button only hides it. */
 export function LinkNotice(props: LinkNoticeProps) {
+  const { messages } = useLocale();
+
   return (
     <div class="notice" role="alert" hidden={props.isHidden}>
       <p>{props.text}</p>
       <button
         type="button"
         class="button button-secondary"
-        aria-label="Закрыть сообщение"
+        aria-label={messages.linkNotice.closeLabel}
         onClick={() => {
           props.onClose();
         }}
       >
-        Закрыть
+        {messages.linkNotice.close}
       </button>
     </div>
   );

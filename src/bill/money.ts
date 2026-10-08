@@ -1,33 +1,23 @@
-/** An amount in kopecks: always an integer. */
+/** An amount in minor units, kopecks or cents: always an integer. */
 export type Kopecks = number;
 
-const KOPECKS_PER_RUBLE = 100;
+const MINOR_UNIT_DIGITS = 2;
+export const MINOR_UNITS_PER_UNIT = 10 ** MINOR_UNIT_DIGITS;
 
-const MAX_KOPECK_DIGITS = 2;
 const WHITESPACE = /\s/gu;
-const RUBLES_PATTERN = /^(\d+)(?:[.,](\d{1,2}))?$/u;
+const AMOUNT_PATTERN = /^(\d+)(?:[.,](\d{1,2}))?$/u;
 
-const rublesFormat = new Intl.NumberFormat("ru-RU", {
-  style: "currency",
-  currency: "RUB",
-  minimumFractionDigits: 2,
-});
-
-/** Parses entered rubles into kopecks; `undefined` for zero and invalid input. */
-export function parseRubles(text: string): Kopecks | undefined {
+/** Parses an entered amount into minor units; `undefined` for zero and invalid input. */
+export function parseAmount(text: string): Kopecks | undefined {
   const compactText = text.replace(WHITESPACE, "");
-  const match = RUBLES_PATTERN.exec(compactText);
+  const match = AMOUNT_PATTERN.exec(compactText);
   if (match === null) return undefined;
 
-  const [, rubles = "", fraction = ""] = match;
-  // Kopecks are assembled as a string so as not to multiply a fractional number and lose precision.
-  const kopecksText = rubles + fraction.padEnd(MAX_KOPECK_DIGITS, "0");
-  const amount = Number(kopecksText);
+  const [, units = "", fraction = ""] = match;
+  // Minor units are assembled as a string so as not to multiply a fractional number and lose precision.
+  const minorUnitsText = units + fraction.padEnd(MINOR_UNIT_DIGITS, "0");
+  const amount = Number(minorUnitsText);
   if (!Number.isSafeInteger(amount) || amount === 0) return undefined;
 
   return amount;
-}
-
-export function formatRubles(amount: Kopecks): string {
-  return rublesFormat.format(amount / KOPECKS_PER_RUBLE);
 }

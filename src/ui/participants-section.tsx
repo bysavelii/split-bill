@@ -8,29 +8,38 @@ import {
   type NameProblem,
   type Participant,
 } from "../bill/bill";
+import { formatNumber } from "../i18n/format";
+import type { Messages } from "../i18n/messages";
+import type { Locale } from "../i18n/locales";
 import { Avatar } from "./avatar";
 import { createBillMessage } from "./bill-message";
 import type { BillProps } from "./bill-props";
 import { EmptyState } from "./empty-state";
 import { Field, MessageArea } from "./field";
+import { useLocale } from "./locale-context";
 import { RemoveButton } from "./remove-button";
 
 const NAME_INPUT_ID = "participant-name";
-const NO_PARTICIPANTS_TEXT =
-  "Добавьте всех, кто участвует, — хватит имени. Себя тоже";
 
-function describeNameProblem(problem: NameProblem): string {
+function describeNameProblem(
+  problem: NameProblem,
+  messages: Messages,
+  locale: Locale,
+): string {
   switch (problem) {
     case "empty":
-      return "Введите имя";
+      return messages.participants.nameEmpty;
     case "tooLong":
-      return `Имя длиннее ${String(MAX_NAME_LENGTH)} знаков — сократите его`;
+      return messages.participants.nameTooLong(
+        formatNumber(MAX_NAME_LENGTH, locale),
+      );
     case "duplicate":
-      return "Участник с таким именем уже есть";
+      return messages.participants.nameDuplicate;
   }
 }
 
 export function ParticipantsSection(props: BillProps) {
+  const { locale, messages } = useLocale();
   const [name, setName] = createSignal("");
   const [message, setMessage] = createBillMessage(() => props.bill);
   let nameInput: HTMLInputElement | undefined;
@@ -40,7 +49,7 @@ export function ParticipantsSection(props: BillProps) {
 
     const problem = findNameProblem(props.bill, trimmedName);
     if (problem !== undefined) {
-      setMessage(describeNameProblem(problem));
+      setMessage(describeNameProblem(problem, messages, locale));
       return;
     }
 
@@ -55,9 +64,7 @@ export function ParticipantsSection(props: BillProps) {
 
   function requestRemoval(participant: Participant): void {
     if (isParticipantInExpenses(props.bill, participant.id)) {
-      setMessage(
-        `Нельзя удалить ${participant.name}: есть траты с этим участником. Сначала удалите их`,
-      );
+      setMessage(messages.participants.cannotRemove(participant.name));
       return;
     }
 
@@ -66,7 +73,7 @@ export function ParticipantsSection(props: BillProps) {
 
   return (
     <section>
-      <h2>Участники</h2>
+      <h2>{messages.participants.heading}</h2>
       <form
         class="inline-form"
         onSubmit={(event) => {
@@ -74,7 +81,7 @@ export function ParticipantsSection(props: BillProps) {
           submitName();
         }}
       >
-        <Field label="Имя" inputId={NAME_INPUT_ID}>
+        <Field label={messages.participants.nameLabel} inputId={NAME_INPUT_ID}>
           <input
             ref={(element) => {
               nameInput = element;
@@ -89,13 +96,13 @@ export function ParticipantsSection(props: BillProps) {
           />
         </Field>
         <button class="button button-primary" type="submit">
-          Добавить
+          {messages.participants.addButton}
         </button>
       </form>
       <MessageArea text={message()} />
       <EmptyState
         icon="people"
-        text={NO_PARTICIPANTS_TEXT}
+        text={messages.participants.emptyHint}
         hidden={props.bill.participants.length > 0}
       />
       <ul class="chips">
@@ -105,7 +112,7 @@ export function ParticipantsSection(props: BillProps) {
               <Avatar name={participant.name} />
               <span class="participant-name">{participant.name}</span>
               <RemoveButton
-                ariaLabel={`Удалить участника ${participant.name}`}
+                ariaLabel={messages.participants.removeLabel(participant.name)}
                 onClick={() => {
                   requestRemoval(participant);
                 }}
