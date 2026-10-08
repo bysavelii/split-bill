@@ -32,13 +32,13 @@ npm run format    # отформатировать код
 - `src/ui` — интерфейс: секции страницы и работа с DOM.
 - `src/style.css` — стили, в том числе мобильная вёрстка.
 - `index.html` — единственная страница, в неё подключается `src/main.ts`.
-- `.github/workflows` — выкладка на GitHub Pages.
+- `.github/workflows` — проверки на pull request и выкладка на GitHub Pages.
 
 Предметная логика (`src/bill`, `src/settlement`, `src/sharing`) не знает о DOM: это закрепляет ESLint.
 
 ## Выкладка на GitHub Pages
 
-Сайт выкладывается из ветки `main` workflow «Выкладка на GitHub Pages».
+Сайт выкладывается из ветки `main` workflow «Выкладка на GitHub Pages». Workflow «Проверки» запускает `make check` на каждом pull request в `main`.
 
 1. В репозитории откройте Settings → Pages → Build and deployment и выберите Source: «GitHub Actions».
 2. Сделайте push в `main` или откройте Actions → «Выкладка на GitHub Pages» → Run workflow (ветка `main`: окружение `github-pages` по умолчанию разрешает выкладку только из ветки по умолчанию).
