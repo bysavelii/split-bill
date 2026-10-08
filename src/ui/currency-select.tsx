@@ -1,6 +1,7 @@
 import { For } from "solid-js";
 import { CURRENCIES, isCurrency, type Currency } from "../bill/currency";
 import { useLocale } from "./locale-context";
+import { SelectBox } from "./select-box";
 
 const CURRENCY_SELECT_ID = "bill-currency";
 
@@ -24,20 +25,22 @@ export function CurrencySelect(props: CurrencySelectProps) {
       <label class="visually-hidden" for={CURRENCY_SELECT_ID}>
         {messages.currencyLabel}
       </label>
-      <select
-        id={CURRENCY_SELECT_ID}
-        onChange={(event) => {
-          changeCurrency(event.currentTarget.value);
-        }}
-      >
-        <For each={CURRENCIES}>
-          {(currency) => (
-            <option value={currency} selected={currency === props.currency}>
-              {messages.currencyNames[currency]}
-            </option>
-          )}
-        </For>
-      </select>
+      <SelectBox>
+        <select
+          id={CURRENCY_SELECT_ID}
+          onChange={(event) => {
+            changeCurrency(event.currentTarget.value);
+          }}
+        >
+          <For each={CURRENCIES}>
+            {(currency) => (
+              <option value={currency} selected={currency === props.currency}>
+                {messages.currencyNames[currency]}
+              </option>
+            )}
+          </For>
+        </select>
+      </SelectBox>
     </div>
   );
 }

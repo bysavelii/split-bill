@@ -55,6 +55,25 @@ function findPayerSelect(): HTMLSelectElement {
   return select;
 }
 
+/** The currency select in the header; the payer select of the expense form is a different one. */
+function findCurrencySelect(): HTMLSelectElement {
+  const select = root.querySelector<HTMLSelectElement>(".page-toolbar select");
+  if (select === null) throw new Error("Currency select not found");
+
+  return select;
+}
+
+function chooseCurrency(currency: string): void {
+  fireEvent.change(findCurrencySelect(), { target: { value: currency } });
+}
+
+function installClipboard(writeText: (text: string) => Promise<void>): void {
+  Object.defineProperty(navigator, "clipboard", {
+    value: { writeText },
+    configurable: true,
+  });
+}
+
 function selectPayer(name: string): void {
   const select = findPayerSelect();
   const option = [...select.options].find(
@@ -123,9 +142,51 @@ function readParticipantsMessage(): string {
   );
 }
 
-function readExpensesMessage(): string {
+/** The error of a control or a group: the element its `aria-describedby` points to; empty while the control has none. */
+function readFieldError(control: Element): string {
+  const errorId = control.getAttribute("aria-describedby");
+  if (errorId === null) return "";
+
+  return normalize(root.querySelector(`#${errorId}`)?.textContent);
+}
+
+function findBeneficiariesFieldset(): HTMLFieldSetElement {
+  const fieldset = root.querySelector("fieldset");
+  if (fieldset === null) throw new Error("Fieldset not found");
+
+  return fieldset;
+}
+
+function readBeneficiariesError(): string {
+  return readFieldError(findBeneficiariesFieldset());
+}
+
+function findFirstBeneficiaryCheckbox(): HTMLInputElement {
+  const checkbox = findBeneficiariesFieldset().querySelector("input");
+  if (checkbox === null) throw new Error("Checkbox not found");
+
+  return checkbox;
+}
+
+function findUndoButton(sectionTitle: string, name: string): HTMLButtonElement {
+  const section = findSection(sectionTitle);
+  const button = [...section.querySelectorAll(".undo button")].find(
+    (candidate) => normalize(candidate.textContent) === name,
+  );
+  if (button === undefined) throw new Error(`Button "${name}" not found`);
+
+  return button as HTMLButtonElement;
+}
+
+function isUndoBarShown(sectionTitle: string): boolean {
+  const bar = findSection(sectionTitle).querySelector<HTMLElement>(".undo");
+
+  return bar !== null && !bar.hidden;
+}
+
+function readUndoText(sectionTitle: string): string {
   return normalize(
-    findSection("Траты").querySelector(".message")?.textContent ?? "",
+    findSection(sectionTitle).querySelector(".undo p")?.textContent,
   );
 }
 
@@ -216,6 +277,15 @@ const LITERAL_CODE_USD =
 /** The same bill in rubles. */
 const LITERAL_CODE_RUB =
   "2.W1siQW5uIiwiQm9iIl0sW1swLDEyMzQ1LFswLDFdXSxbMSw1MDAsWzFdXV0sIlJVQiJd";
+
+const SHARE_COPIED_RU =
+  "Ссылка скопирована. Отправьте её друзьям — они увидят этот счёт";
+const SHARE_COPY_MANUALLY_RU =
+  "Скопировать автоматически не вышло: скопируйте ссылку из поля и отправьте друзьям";
+const SHARE_COPIED_EN =
+  "Link copied. Send it to your group — they will see this bill";
+const SHARE_COPY_MANUALLY_EN =
+  "Couldn't copy automatically: copy the link from the field and send it to your group";
 
 const EMPTY_SUMMARY =
   "Добавьте траты — здесь появится, кто кому сколько должен";
@@ -801,7 +871,7 @@ describe("input errors", () => {
   it("rejects an empty name", () => {
     addParticipant("   ");
 
-    expect(readParticipantsMessage()).toBe("Введите имя");
+    expect(readFieldError(findInput("Имя"))).toBe("Введите имя");
     expect(readParticipantNames()).toEqual([]);
   });
 
@@ -809,14 +879,16 @@ describe("input errors", () => {
     addParticipant("Аня");
     addParticipant("аня");
 
-    expect(readParticipantsMessage()).toBe("Участник с таким именем уже есть");
+    expect(readFieldError(findInput("Имя"))).toBe(
+      "Участник с таким именем уже есть",
+    );
     expect(readParticipantNames()).toEqual(["Аня"]);
   });
 
   it("rejects a name that is too long", () => {
     addParticipant("я".repeat(MAX_NAME_LENGTH + 1));
 
-    expect(readParticipantsMessage()).toBe(
+    expect(readFieldError(findInput("Имя"))).toBe(
       "Имя длиннее 40 знаков — сократите его",
     );
     expect(readParticipantNames()).toEqual([]);
@@ -830,7 +902,7 @@ describe("input errors", () => {
 
     addExpense("90071992547404,61");
 
-    expect(readExpensesMessage()).toBe(
+    expect(readFieldError(findInput("Сколько, ₽"))).toBe(
       "Слишком большая сумма: общий итог счёта не поместится в расчёт",
     );
     expect(readExpenses()).toEqual(expenses);
@@ -841,7 +913,7 @@ describe("input errors", () => {
     addParticipant("Аня");
     addExpense(amount);
 
-    expect(readExpensesMessage()).toBe(
+    expect(readFieldError(findInput("Сколько, ₽"))).toBe(
       "Введите сумму больше нуля, например 1500 или 349,90",
     );
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
@@ -852,7 +924,7 @@ describe("input errors", () => {
     uncheckBeneficiary("Аня");
     addExpense("100");
 
-    expect(readExpensesMessage()).toBe("Отметьте, за кого платили");
+    expect(readBeneficiariesError()).toBe("Отметьте, за кого платили");
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
 
@@ -900,11 +972,11 @@ describe("input errors", () => {
   it("after an amount error and a correction adds the expense and removes the message", () => {
     addParticipant("Аня");
     addExpense("abc");
-    expect(readExpensesMessage()).not.toBe("");
+    expect(readFieldError(findInput("Сколько, ₽"))).not.toBe("");
 
     addExpense("250");
 
-    expect(readExpensesMessage()).toBe("");
+    expect(readFieldError(findInput("Сколько, ₽"))).toBe("");
     expect(readExpenses()).toEqual(["Аня — 250,00 ₽, за всех"]);
   });
 
@@ -919,6 +991,330 @@ describe("input errors", () => {
     expect(
       root.querySelector<HTMLInputElement>("label.checkbox input")?.checked,
     ).toBe(false);
+  });
+});
+
+describe("selects", () => {
+  it.each([
+    ["the payer", "Кто платил", findPayerSelect],
+    ["the currency", "Валюта", findCurrencySelect],
+  ])(
+    "%s select is native, sits in a select box with a hidden chevron and is tied to its label",
+    (_, labelText, findSelect) => {
+      const select = findSelect();
+      const selectBox = select.closest(".select-box");
+      const chevron = selectBox?.querySelector("svg");
+
+      expect(select.tagName).toBe("SELECT");
+      expect(chevron?.getAttribute("aria-hidden")).toBe("true");
+      expect(chevron?.classList.contains("select-chevron")).toBe(true);
+      expect(findInput(labelText)).toBe(select);
+    },
+  );
+});
+
+describe("errors at the fields", () => {
+  const AMOUNT_LABEL = "Сколько, ₽";
+
+  function expectLinkedError(control: Element): void {
+    const errorId = control.getAttribute("aria-describedby") ?? "";
+    const error = root.querySelector(`[id="${errorId}"]`);
+
+    expect(errorId).not.toBe("");
+    expect(error?.classList.contains("field-error")).toBe(true);
+  }
+
+  it("keeps an empty error element with a live area for every field", () => {
+    addParticipant("Аня");
+
+    const errors = [...root.querySelectorAll(".field-error")];
+
+    expect(errors).toHaveLength(3);
+    for (const error of errors) {
+      expect(error.getAttribute("aria-live")).toBe("polite");
+      expect(error.textContent).toBe("");
+    }
+    expect(findInput(AMOUNT_LABEL).hasAttribute("aria-invalid")).toBe(false);
+    expect(findInput(AMOUNT_LABEL).hasAttribute("aria-describedby")).toBe(
+      false,
+    );
+  });
+
+  describe("amount", () => {
+    it.each(["", "0", "abc", "1,234"])(
+      "marks the invalid amount %j, links the error and focuses the field",
+      (amount) => {
+        addParticipant("Аня");
+        addExpense(amount);
+
+        const input = findInput(AMOUNT_LABEL);
+        expect(input.getAttribute("aria-invalid")).toBe("true");
+        expectLinkedError(input);
+        expect(readFieldError(input)).toBe(
+          "Введите сумму больше нуля, например 1500 или 349,90",
+        );
+        expect(document.activeElement).toBe(input);
+      },
+    );
+
+    it("marks the total that is too large the same way", () => {
+      addParticipant("Аня");
+      addExpense("90071992547407,69");
+
+      addExpense("90071992547404,61");
+
+      const input = findInput(AMOUNT_LABEL);
+      expect(input.getAttribute("aria-invalid")).toBe("true");
+      expectLinkedError(input);
+      expect(document.activeElement).toBe(input);
+    });
+
+    it("lets the error go with one typed character", () => {
+      addParticipant("Аня");
+      addExpense("abc");
+      const input = findInput(AMOUNT_LABEL);
+
+      fireEvent.input(input, { target: { value: "abcd" } });
+
+      expect(input.hasAttribute("aria-invalid")).toBe(false);
+      expect(input.hasAttribute("aria-describedby")).toBe(false);
+      expect(root.querySelector("#expense-amount-error")?.textContent).toBe("");
+    });
+
+    it("lets the error go when the bill changes", () => {
+      addParticipant("Аня");
+      addExpense("abc");
+
+      addParticipant("Боря");
+
+      expect(findInput(AMOUNT_LABEL).hasAttribute("aria-invalid")).toBe(false);
+    });
+  });
+
+  describe("for whom", () => {
+    it("marks the group, links the error and focuses the first checkbox", () => {
+      addParticipants("Аня", "Боря");
+      uncheckBeneficiary("Аня");
+      uncheckBeneficiary("Боря");
+      addExpense("100");
+
+      const fieldset = findBeneficiariesFieldset();
+      expectLinkedError(fieldset);
+      expect(readBeneficiariesError()).toBe("Отметьте, за кого платили");
+      expect(document.activeElement).toBe(findFirstBeneficiaryCheckbox());
+      expect(findInput(AMOUNT_LABEL).hasAttribute("aria-invalid")).toBe(false);
+    });
+
+    it("lets the error go when a box is checked", () => {
+      addParticipant("Аня");
+      uncheckBeneficiary("Аня");
+      addExpense("100");
+
+      fireEvent.click(findFirstBeneficiaryCheckbox());
+
+      expect(findBeneficiariesFieldset().hasAttribute("aria-describedby")).toBe(
+        false,
+      );
+      expect(readBeneficiariesError()).toBe("");
+    });
+  });
+
+  describe("name", () => {
+    it.each([
+      ["empty", "   ", "Введите имя"],
+      ["repeated", "Аня", "Участник с таким именем уже есть"],
+      [
+        "too long",
+        "я".repeat(MAX_NAME_LENGTH + 1),
+        "Имя длиннее 40 знаков — сократите его",
+      ],
+    ])(
+      "marks the %s name, links the error and focuses the field",
+      (_, name, text) => {
+        addParticipant("Аня");
+        addParticipant(name);
+
+        const input = findInput("Имя");
+        expect(input.getAttribute("aria-invalid")).toBe("true");
+        expectLinkedError(input);
+        expect(readFieldError(input)).toBe(text);
+        expect(document.activeElement).toBe(input);
+      },
+    );
+
+    it("lets the error go with one typed character", () => {
+      addParticipant("   ");
+      const input = findInput("Имя");
+
+      fireEvent.input(input, { target: { value: "А" } });
+
+      expect(input.hasAttribute("aria-invalid")).toBe(false);
+      expect(input.hasAttribute("aria-describedby")).toBe(false);
+    });
+
+    it('keeps "can\'t remove" in the message area of the section', () => {
+      addParticipant("Аня");
+      addExpense("100");
+
+      findButton("Удалить участника Аня").click();
+
+      expect(readParticipantsMessage()).toContain("Нельзя удалить Аня");
+      expect(findInput("Имя").hasAttribute("aria-invalid")).toBe(false);
+    });
+  });
+});
+
+describe("amount placeholder", () => {
+  it("shows the format with a comma on the Russian page", () => {
+    expect(findInput("Сколько, ₽").placeholder).toBe("1500 или 349,90");
+  });
+
+  it("shows the format with a point on the English page", () => {
+    remountApp("en");
+
+    expect(findInput("Amount, $").placeholder).toBe("1500 or 349.90");
+  });
+});
+
+describe("focus after adding an expense", () => {
+  it("lands on the amount field and keeps the payer", () => {
+    addParticipants("Аня", "Боря");
+    selectPayer("Боря");
+
+    addExpense("100");
+
+    expect(document.activeElement).toBe(findInput("Сколько, ₽"));
+    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Боря");
+  });
+});
+
+describe("undo of a removal", () => {
+  const EXPENSE = "Аня — 900,00 ₽, за всех";
+
+  function addAnnAndBobWithExpense(): void {
+    addParticipants("Аня", "Боря");
+    addExpenseBy("Аня", "900");
+  }
+
+  it("is not offered before anything is removed", () => {
+    addAnnAndBobWithExpense();
+
+    expect(isUndoBarShown("Траты")).toBe(false);
+    expect(isUndoBarShown("Участники")).toBe(false);
+  });
+
+  describe("of an expense", () => {
+    it("says what was removed and moves the focus to the button", () => {
+      addAnnAndBobWithExpense();
+
+      findRemoveExpenseButton(EXPENSE).click();
+
+      const button = findUndoButton("Траты", "Вернуть");
+      expect(isUndoBarShown("Траты")).toBe(true);
+      expect(readUndoText("Траты")).toBe(
+        "Трата удалена: Аня — 900,00 ₽, за всех",
+      );
+      expect(document.activeElement).toBe(button);
+      expect(button.getAttribute("aria-describedby")).toBe(
+        findSection("Траты").querySelector(".undo p")?.id,
+      );
+      expect(readExpenses()).toEqual([]);
+    });
+
+    it("brings back the expense, the summary and the address and focuses the amount", () => {
+      addAnnAndBobWithExpense();
+      const summary = readSummary();
+      const address = location.hash;
+      findRemoveExpenseButton(EXPENSE).click();
+
+      findUndoButton("Траты", "Вернуть").click();
+
+      expect(readExpenses()).toEqual([EXPENSE]);
+      expect(readSummary()).toEqual(summary);
+      expect(location.hash).toBe(address);
+      expect(document.activeElement).toBe(findInput("Сколько, ₽"));
+      expect(isUndoBarShown("Траты")).toBe(false);
+    });
+
+    it("goes away at the next change of the bill", () => {
+      addAnnAndBobWithExpense();
+      findRemoveExpenseButton(EXPENSE).click();
+
+      addParticipant("Вера");
+
+      expect(isUndoBarShown("Траты")).toBe(false);
+    });
+
+    it("goes away when the address changes", () => {
+      addAnnAndBobWithExpense();
+      findRemoveExpenseButton(EXPENSE).click();
+      const code = encodeBill(
+        { participants: [{ id: "anna", name: "Аня" }], expenses: [] },
+        "RUB",
+      );
+
+      changeAddressOnPage(`/#${code}`);
+
+      expect(isUndoBarShown("Траты")).toBe(false);
+    });
+
+    it("stays when the currency changes and restores the bill in the chosen currency", () => {
+      addAnnAndBobWithExpense();
+      findRemoveExpenseButton(EXPENSE).click();
+
+      chooseCurrency("USD");
+
+      expect(isUndoBarShown("Траты")).toBe(true);
+
+      findUndoButton("Траты", "Вернуть").click();
+
+      expect(readExpenses()).toEqual(["Аня — 900,00 $, за всех"]);
+    });
+  });
+
+  describe("of a participant", () => {
+    it("says who was removed and moves the focus to the button", () => {
+      addParticipants("Аня", "Боря");
+
+      findButton("Удалить участника Боря").click();
+
+      expect(readUndoText("Участники")).toBe("Участник удалён: Боря");
+      expect(document.activeElement).toBe(
+        findUndoButton("Участники", "Вернуть"),
+      );
+      expect(readParticipantNames()).toEqual(["Аня"]);
+    });
+
+    it("brings back the participant and the address and focuses the name", () => {
+      addParticipants("Аня", "Боря");
+      const address = location.hash;
+      findButton("Удалить участника Боря").click();
+
+      findUndoButton("Участники", "Вернуть").click();
+
+      expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
+      expect(location.hash).toBe(address);
+      expect(document.activeElement).toBe(findInput("Имя"));
+      expect(isUndoBarShown("Участники")).toBe(false);
+    });
+
+    it("goes away at the next change of the bill", () => {
+      addParticipants("Аня", "Боря");
+      findButton("Удалить участника Боря").click();
+
+      addParticipant("Вера");
+
+      expect(isUndoBarShown("Участники")).toBe(false);
+    });
+
+    it("is not offered when the removal is refused", () => {
+      addParticipant("Аня");
+      addExpense("100");
+
+      findButton("Удалить участника Аня").click();
+
+      expect(isUndoBarShown("Участники")).toBe(false);
+    });
   });
 });
 
@@ -982,13 +1378,6 @@ describe("bill link", () => {
 
   function isLinkFieldHidden(): boolean {
     return readLinkField().closest<HTMLElement>(".field")?.hidden === true;
-  }
-
-  function installClipboard(writeText: (text: string) => Promise<void>): void {
-    Object.defineProperty(navigator, "clipboard", {
-      value: { writeText },
-      configurable: true,
-    });
   }
 
   /** A clipboard whose answer the test delivers itself, when it suits. */
@@ -1302,7 +1691,7 @@ describe("bill link", () => {
       findButton("Поделиться").click();
 
       await vi.waitFor(() => {
-        expect(readShareMessage()).toBe("Ссылка скопирована");
+        expect(readShareMessage()).toBe(SHARE_COPIED_RU);
       });
       expect(writeText).toHaveBeenCalledExactlyOnceWith(
         `${location.origin}/split-bill/#${code}`,
@@ -1319,7 +1708,7 @@ describe("bill link", () => {
       findButton("Поделиться").click();
 
       await vi.waitFor(() => {
-        expect(readShareMessage()).toBe("Ссылка скопирована");
+        expect(readShareMessage()).toBe(SHARE_COPIED_RU);
       });
       const message = readShareSection().querySelector(".message");
       expect(message?.classList.contains("message-success")).toBe(true);
@@ -1362,7 +1751,7 @@ describe("bill link", () => {
 
       findButton("Поделиться").click();
 
-      expect(readShareMessage()).toBe("Скопируйте ссылку из поля");
+      expect(readShareMessage()).toBe(SHARE_COPY_MANUALLY_RU);
       expect(isLinkFieldHidden()).toBe(false);
       expect(readLinkField().readOnly).toBe(true);
       expect(readLinkField().value).toBe(location.href);
@@ -1377,7 +1766,7 @@ describe("bill link", () => {
       findButton("Поделиться").click();
 
       await vi.waitFor(() => {
-        expect(readShareMessage()).toBe("Скопируйте ссылку из поля");
+        expect(readShareMessage()).toBe(SHARE_COPY_MANUALLY_RU);
       });
       expect(isLinkFieldHidden()).toBe(false);
       expect(readLinkField().value).toBe(location.href);
@@ -1391,13 +1780,13 @@ describe("bill link", () => {
       addParticipant("Аня");
       findButton("Поделиться").click();
       await vi.waitFor(() => {
-        expect(readShareMessage()).toBe("Ссылка скопирована");
+        expect(readShareMessage()).toBe(SHARE_COPIED_RU);
       });
 
       findButton("Поделиться").click();
 
       await vi.waitFor(() => {
-        expect(readShareMessage()).toBe("Скопируйте ссылку из поля");
+        expect(readShareMessage()).toBe(SHARE_COPY_MANUALLY_RU);
       });
       const message = readShareSection().querySelector(".message");
       expect(message?.classList.contains("message-success")).toBe(false);
@@ -1413,6 +1802,33 @@ describe("bill link", () => {
         bill: { participants: [], expenses: [] },
         currency: "RUB",
       });
+    });
+
+    it("puts a check mark before the success text and none while idle", async () => {
+      const writeText = vi.fn<(text: string) => Promise<void>>();
+      writeText.mockResolvedValue(undefined);
+      installClipboard(writeText);
+      addParticipant("Аня");
+      const message = readShareSection().querySelector(".message");
+      expect(message?.querySelector("svg")).toBeNull();
+      expect(message?.textContent).toBe("");
+
+      findButton("Поделиться").click();
+
+      await vi.waitFor(() => {
+        expect(readShareMessage()).toBe(SHARE_COPIED_RU);
+      });
+      expect(message?.querySelector("svg")?.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    });
+
+    it("shows no check mark with the fallback text", () => {
+      addParticipant("Аня");
+
+      findButton("Поделиться").click();
+
+      expect(readShareSection().querySelector(".message svg")).toBeNull();
     });
 
     it("on the next render resets the message and hides the field", () => {
@@ -1579,13 +1995,9 @@ describe("English page", () => {
   it("reports input problems in English", () => {
     addEnglishParticipant("Ann");
     addEnglishParticipant("Ann");
-    const duplicateMessage = normalize(
-      findSection(SECTIONS.participants).querySelector(".message")?.textContent,
-    );
+    const duplicateMessage = readFieldError(findInput("Name"));
     addEnglishExpense("Ann", "abc");
-    const amountMessage = normalize(
-      findSection(SECTIONS.expenses).querySelector(".message")?.textContent,
-    );
+    const amountMessage = readFieldError(findInput("Amount, $"));
 
     expect(duplicateMessage).toBe(
       "A participant with this name already exists",
@@ -1625,6 +2037,69 @@ describe("English page", () => {
       "Bob — ₽5.00, for: Bob",
     ]);
     expect(findInput("Amount, ₽")).toBeDefined();
+  });
+
+  describe("undo of an expense", () => {
+    const EXPENSE_LABEL = "Remove expense: Ann — $900.00, for everyone";
+
+    beforeEach(() => {
+      addEnglishParticipant("Ann");
+      addEnglishParticipant("Bob");
+      addEnglishExpense("Ann", "900");
+      findButton(EXPENSE_LABEL).click();
+    });
+
+    it("tells what was removed", () => {
+      expect(readUndoText(SECTIONS.expenses)).toBe(
+        "Expense removed: Ann — $900.00, for everyone",
+      );
+    });
+
+    it("moves the focus to Undo", () => {
+      expect(document.activeElement).toBe(
+        findUndoButton(SECTIONS.expenses, "Undo"),
+      );
+    });
+
+    it("brings the expense back", () => {
+      findUndoButton(SECTIONS.expenses, "Undo").click();
+
+      expect(readExpenses(SECTIONS.expenses)).toEqual([
+        "Ann — $900.00, for everyone",
+      ]);
+    });
+
+    it("goes away at the next change of the bill", () => {
+      findButton("Remove participant Bob").click();
+
+      expect(isUndoBarShown(SECTIONS.expenses)).toBe(false);
+    });
+  });
+
+  it("tells which participant was removed in English", () => {
+    addEnglishParticipant("Ann");
+
+    findButton("Remove participant Ann").click();
+
+    expect(readUndoText(SECTIONS.participants)).toBe(
+      "Participant removed: Ann",
+    );
+  });
+
+  it("says what to do after sharing, whether the link was copied or not", async () => {
+    addEnglishParticipant("Ann");
+    findButton("Share").click();
+    const message = findSection(SECTIONS.share).querySelector(".message");
+    expect(normalize(message?.textContent)).toBe(SHARE_COPY_MANUALLY_EN);
+
+    const writeText = vi.fn<(text: string) => Promise<void>>();
+    writeText.mockResolvedValue(undefined);
+    installClipboard(writeText);
+    findButton("Share").click();
+
+    await vi.waitFor(() => {
+      expect(normalize(message?.textContent)).toBe(SHARE_COPIED_EN);
+    });
   });
 
   it("explains a broken link in English and falls back to dollars", () => {
@@ -1703,19 +2178,6 @@ describe("currency of an opened bill on the Russian page", () => {
 });
 
 describe("currency", () => {
-  function findCurrencySelect(): HTMLSelectElement {
-    const select = root.querySelector<HTMLSelectElement>(
-      ".page-toolbar select",
-    );
-    if (select === null) throw new Error("Currency select not found");
-
-    return select;
-  }
-
-  function chooseCurrency(currency: string): void {
-    fireEvent.change(findCurrencySelect(), { target: { value: currency } });
-  }
-
   function readAddressCurrency(): unknown {
     const result = decodeBill(location.hash.slice(1));
 
@@ -1879,16 +2341,13 @@ describe("currency", () => {
     it("clears the message about the copied link", async () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
       writeText.mockResolvedValue(undefined);
-      Object.defineProperty(navigator, "clipboard", {
-        value: { writeText },
-        configurable: true,
-      });
+      installClipboard(writeText);
       findButton("Share").click();
       const message = findSection(ENGLISH_SECTIONS.share).querySelector(
         ".message",
       );
       await vi.waitFor(() => {
-        expect(normalize(message?.textContent)).toBe("Link copied");
+        expect(normalize(message?.textContent)).toBe(SHARE_COPIED_EN);
       });
 
       chooseCurrency("RUB");

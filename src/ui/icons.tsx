@@ -1,4 +1,5 @@
-export type IconName = "close" | "check" | "arrow" | "people" | "receipt";
+export type IconName =
+  "close" | "check" | "arrow" | "people" | "receipt" | "chevron";
 
 export interface IconProps {
   readonly name: IconName;
@@ -13,6 +14,7 @@ const ICON_PATHS: Record<IconName, string> = {
   people:
     "M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 19v-1a4 4 0 0 0-3-3.87M15 4.13a3.5 3.5 0 0 1 0 6.74",
   receipt: "M6 3h12v18l-3-2-3 2-3-2-3 2V3zM9 8h6M9 12h6",
+  chevron: "M6 9l6 6 6-6",
 };
 
 /** The icon is hidden from the screen reader: the meaning is always conveyed by the text or `aria-label` next to it. */

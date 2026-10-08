@@ -72,7 +72,7 @@ Contrast (WCAG): text no lower than 4.5:1, controls and icons no lower than 3:1.
 | "gives" / background                                        |        4.75 |   8.56 |
 | field border (`--color-control-border`) / surface (≥ 3)     |        3.82 |   4.01 |
 | field border / background (≥ 3)                             |        3.50 |   4.45 |
-| error / surface                                             |        6.57 |   5.89 |
+| error text and the border of an invalid field / surface     |        6.57 |   5.89 |
 | text / warning background                                   |       16.09 |  12.05 |
 | dark avatar text / any of the eight tones                   | 12.35–13.68 | same |
 
@@ -87,11 +87,19 @@ Contrast (WCAG): text no lower than 4.5:1, controls and icons no lower than 3:1.
 - Summary: transfer cards `.transfer`, the `.transfers-count` line, the expandable `details.breakdown` block "How it is calculated" ("Как посчитано") with a table. "Receives" ("получает") and "gives" ("отдаёт") differ by color, sign (+ and −) and word, not by color alone.
 - Empty states are `p.empty-state` with an icon and a friendly hint on what to do next.
 - Header: `.page-toolbar` (a row that wraps instead of overflowing) with the language link `.language-link` (one link per other language, named in its own language: "Русский" / "English") and the currency select `.currency-select` (a native `select`; its label is `.visually-hidden`); then the title, the subtitle and the overview. Both controls are at least 44 px tall.
+- Selects: `SelectBox` from `src/ui/select-box.tsx` wraps a native `select` in `.select-box` and draws the `chevron` icon (`.select-chevron`, `--color-text-muted`) over it; the `select` itself has `appearance: none` and stays native for the keyboard, screen readers and the phone's picker. Both selects (the payer and the currency) use it.
+- Field error: `p.field-error` (`FieldError` from `src/ui/field.tsx`) right under its field: under "Name", under the amount field, inside the "For whom" group. The control has `aria-invalid="true"` (name and amount) and `aria-describedby` pointing to the error (the "For whom" `fieldset` has only `aria-describedby`), the border of an invalid field is `--color-error`. The element stays in the markup while empty, with `aria-live="polite"`, and takes no space. "Can't remove …" is not tied to a field and stays in the `.message` area of the participants section.
+- Undo bar: `.undo` (`UndoBar` from `src/ui/undo-bar.tsx`) at the end of the participants and of the expenses section: a text ("Participant removed: Ann", "Expense removed: Ann — $900.00, for everyone") and a secondary button "Undo" / "Вернуть".
+- Share message: a success has the `check` icon (`.message-icon`) before the text, so it is not told apart by color alone; the fallback ("Couldn't copy automatically …") is an error message with the link field.
 - Layout: the header, then `.layout` made of `.layout-main` (participants and expenses) and `.layout-side` (the summary and "Share"), then `.how-it-works` ("How it works": a heading and three numbered steps, static markup outside the island, so it is in the page without scripts).
 
 ### Rules
 
 - In CSS, tokens only; a new color or size first becomes a token, and for a color also a row of the contrast table.
+- A `select` only through `SelectBox`; there is no system arrow in either theme.
+- An error sits at its own field and disappears when that control is edited (`input` for text, `change` for checkboxes) or when the bill changes; focus moves to the invalid control (the first checkbox for "For whom").
+- A removal can be undone until the next change of the bill (an edit, a restore, a new address): the bar shows only while the bill is the one the removal produced, and has no timer. Focus goes to "Undo" after a removal and to the form field of the section after "Undo".
+- The amount placeholder shows the format ("1500 or 349.90" / "1500 или 349,90") in `--color-text-muted`; it depends on the language, not on the currency.
 - The favicon (`public/favicon.svg`) and `<meta name="theme-color">` in `src/components/page-head.astro` cannot see CSS variables and repeat the accent `#0E7C66` and the text `#1C1917` of the light theme: when these tokens change, they are changed together.
 - Icons only through the `Icon` component from `src/ui/icons.tsx`; they are hidden from screen readers (`aria-hidden`); there are no emoji in the interface.
 - Avatars only through `src/ui/avatar.tsx`. The number of tones `AVATAR_TONE_COUNT` must match the number of `--color-avatar-N` in `style.css`.
@@ -114,7 +122,7 @@ Tests do not check the look, so after changing styles or texts look at it with y
      `1.W1si0JDQvdGPIiwi0JHQvtGA0Y8iLCLQktC10YDQsCIsItCT0L7RiNCwIl0sW1swLDQ4MDAwMCxbMCwxLDIsM11dLFsxLDEyNTA1MCxbMCwxLDJdXSxbMiw2MDAwMCxbMiwzXV1dXQ`
    - English, version 2 with dollars (Ann paid 480.00 for everyone, Ben paid 125.05 for Ann, Ben and Clara, Clara paid 60.00 for Clara and Dan):
      `2.W1siQW5uIiwiQmVuIiwiQ2xhcmEiLCJEYW4iXSxbWzAsNDgwMDAsWzAsMSwyLDNdXSxbMSwxMjUwNSxbMCwxLDJdXSxbMiw2MDAwLFsyLDNdXV0sIlVTRCJd`
-4. The matrix: widths and heights 360×800, 768×1024, 1280×800 × `colorScheme` `"light"` and `"dark"` × empty and filled × English and Russian page × USD and RUB (switch with the currency select), the filled ones with "How it is calculated" closed and open; plus stress data at 360: a 40-character name without spaces and five expenses. Look at long captions too: the header with the language link and the currency select must fit at 360 px in both languages.
+4. The matrix: widths and heights 360×800, 768×1024, 1280×800 × `colorScheme` `"light"` and `"dark"` × empty and filled × English and Russian page × USD and RUB (switch with the currency select), the filled ones with "How it is calculated" closed and open; the states of the interface: amount error, "For whom" error, name error, the Undo bar after removing an expense and after removing a participant, share success (a clipboard that accepts), share fallback (a clipboard that refuses: the link field is shown and selected), focus on both selects; plus stress data at 360: a 40-character name without spaces and five expenses. Look at long captions too: the header with the language link and the currency select must fit at 360 px in both languages.
 5. On each screenshot check `document.documentElement.scrollWidth <= window.innerWidth` and the sizes of buttons, chips, fields, the select and the language link through `getBoundingClientRect` (at least 44 px).
 6. Take full-page screenshots (`fullPage`) and look at them: is there overflow, truncated captions, misaligned amounts, weak contrast, overlaps of the sticky column? (In a full-page shot at 1280×800 the sticky column is cut at the viewport height: it scrolls on its own, this is not a defect.)
 7. Without scripts (Playwright `javaScriptEnabled: false`) both pages must still show the `h1`, the subtitle and the "How it works" section with three steps.

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-e365ad6d",
+  "timestamp": "2026-10-08T13:08:38.553Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Every native select goes through SelectBox: appearance none and the chevron icon in --color-text-muted over it",
+    "description": "Keeps native accessibility while matching the app's style in both themes; the currency select gets the same chevron"
+  }
+}

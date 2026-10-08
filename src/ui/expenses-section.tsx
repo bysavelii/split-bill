@@ -14,21 +14,32 @@ import { readCurrencySymbol } from "../i18n/format";
 import type { Messages } from "../i18n/messages";
 import { useAmountFormatter, type AmountFormatter } from "./amount-formatter";
 import { Avatar } from "./avatar";
-import { createBillMessage } from "./bill-message";
+import { createBillMessage, NO_MESSAGE } from "./bill-message";
 import type { BillProps } from "./bill-props";
 import { EmptyState } from "./empty-state";
-import { Field, MessageArea } from "./field";
+import { Field, FieldError, fieldErrorId } from "./field";
 import { Icon } from "./icons";
 import { useLocale } from "./locale-context";
 import { RemoveButton } from "./remove-button";
+import { SelectBox } from "./select-box";
+import { createRemovalMemory, UndoBar } from "./undo-bar";
 
 const PAYER_SELECT_ID = "expense-payer";
 const AMOUNT_INPUT_ID = "expense-amount";
+const BENEFICIARIES_FIELDSET_ID = "expense-beneficiaries";
+const UNDO_TEXT_ID = "expenses-undo-text";
 
 /** Everyone is a beneficiary by default, so the form remembers only those who were unchecked. */
 const NO_UNCHECKED_IDS: ReadonlySet<ParticipantId> = new Set();
 
-type ExpenseProblem = "invalidAmount" | "noBeneficiaries";
+type ExpenseProblem = "invalidAmount" | "noBeneficiaries" | "totalTooLarge";
+
+/** What a removed expense is called in a text: the three formatted parts a language puts in its own order. */
+interface ExpenseDescription {
+  readonly payerName: string;
+  readonly amountText: string;
+  readonly beneficiariesText: string;
+}
 
 type ExpenseReading =
   { readonly expense: Expense } | { readonly problem: ExpenseProblem };
@@ -79,18 +90,6 @@ function withoutId(
   return new Set([...ids].filter((candidate) => candidate !== id));
 }
 
-function describeExpenseProblem(
-  problem: ExpenseProblem,
-  messages: Messages,
-): string {
-  switch (problem) {
-    case "invalidAmount":
-      return messages.expenses.amountError;
-    case "noBeneficiaries":
-      return messages.expenses.noBeneficiariesError;
-  }
-}
-
 function readExpense(facts: ExpenseFormFacts): ExpenseReading {
   const amount = parseAmount(facts.amountText);
   if (amount === undefined) return { problem: "invalidAmount" };
@@ -125,21 +124,17 @@ function describeBeneficiaries(
   return messages.expenses.forBeneficiaries(beneficiaryNames);
 }
 
-function describeRemoval(
+function describeExpense(
   bill: Bill,
   expense: Expense,
   formatAmount: AmountFormatter,
   messages: Messages,
-): string {
-  const payerName = getParticipantName(bill, expense.payerId);
-  const amountText = formatAmount(expense.amount);
-  const beneficiariesText = describeBeneficiaries(bill, expense, messages);
-
-  return messages.expenses.removeLabel(
-    payerName,
-    amountText,
-    beneficiariesText,
-  );
+): ExpenseDescription {
+  return {
+    payerName: getParticipantName(bill, expense.payerId),
+    amountText: formatAmount(expense.amount),
+    beneficiariesText: describeBeneficiaries(bill, expense, messages),
+  };
 }
 
 function BeneficiaryToggle(props: BeneficiaryToggleProps) {
@@ -163,29 +158,30 @@ function BeneficiaryToggle(props: BeneficiaryToggleProps) {
 
 function ExpenseRow(props: ExpenseRowProps) {
   const { messages } = useLocale();
-  const payerName = () => getParticipantName(props.bill, props.expense.payerId);
+  const description = createMemo(() =>
+    describeExpense(props.bill, props.expense, props.formatAmount, messages),
+  );
+  const removeLabel = () => {
+    const { payerName, amountText, beneficiariesText } = description();
+
+    return messages.expenses.removeLabel(
+      payerName,
+      amountText,
+      beneficiariesText,
+    );
+  };
 
   return (
     <li class="expense">
-      <Avatar name={payerName()} />
+      <Avatar name={description().payerName} />
       <span class="expense-text">
-        <span class="expense-payer">{payerName()}</span>
+        <span class="expense-payer">{description().payerName}</span>
         <span class="expense-beneficiaries">
-          {describeBeneficiaries(props.bill, props.expense, messages)}
+          {description().beneficiariesText}
         </span>
       </span>
-      <span class="amount expense-amount">
-        {props.formatAmount(props.expense.amount)}
-      </span>
-      <RemoveButton
-        ariaLabel={describeRemoval(
-          props.bill,
-          props.expense,
-          props.formatAmount,
-          messages,
-        )}
-        onClick={props.onRemove}
-      />
+      <span class="amount expense-amount">{description().amountText}</span>
+      <RemoveButton ariaLabel={removeLabel()} onClick={props.onRemove} />
     </li>
   );
 }
@@ -198,12 +194,20 @@ export function ExpensesSection(props: BillProps) {
   const [chosenPayerId, setChosenPayerId] = createSignal<ParticipantId>();
   const [amountText, setAmountText] = createSignal("");
   const [uncheckedIds, setUncheckedIds] = createSignal(NO_UNCHECKED_IDS);
-  const [message, setMessage] = createBillMessage(() => props.bill);
+  const [amountError, setAmountError] = createBillMessage(() => props.bill);
+  const [beneficiariesError, setBeneficiariesError] = createBillMessage(
+    () => props.bill,
+  );
+  const [removal, rememberRemoval] = createRemovalMemory(() => props.bill);
+  let amountInput: HTMLInputElement | undefined;
+  let beneficiariesFieldset: HTMLFieldSetElement | undefined;
 
   const payerId = createMemo(() =>
     pickPayerId(participants(), chosenPayerId()),
   );
   const hasParticipants = () => participants().length > 0;
+  const hasAmountError = () => amountError() !== NO_MESSAGE;
+  const hasBeneficiariesError = () => beneficiariesError() !== NO_MESSAGE;
   const hasExpenses = () => props.bill.expenses.length > 0;
   const amountLabel = () =>
     messages.expenses.amountLabel(readCurrencySymbol(props.currency, locale));
@@ -235,6 +239,34 @@ export function ExpensesSection(props: BillProps) {
       : withId(currentIds, id);
 
     setUncheckedIds(nextIds);
+    setBeneficiariesError(NO_MESSAGE);
+  }
+
+  function showAmountError(text: string): void {
+    setAmountError(text);
+    amountInput?.focus();
+  }
+
+  function showBeneficiariesError(text: string): void {
+    const firstCheckbox =
+      beneficiariesFieldset?.querySelector<HTMLInputElement>("input");
+
+    setBeneficiariesError(text);
+    firstCheckbox?.focus();
+  }
+
+  function showExpenseProblem(problem: ExpenseProblem): void {
+    switch (problem) {
+      case "invalidAmount":
+        showAmountError(messages.expenses.amountError);
+        return;
+      case "totalTooLarge":
+        showAmountError(messages.expenses.totalTooLargeError);
+        return;
+      case "noBeneficiaries":
+        showBeneficiariesError(messages.expenses.noBeneficiariesError);
+        return;
+    }
   }
 
   function submitExpense(): void {
@@ -248,19 +280,47 @@ export function ExpensesSection(props: BillProps) {
       beneficiaryIds: listBeneficiaryIds(),
     });
     if ("problem" in reading) {
-      setMessage(describeExpenseProblem(reading.problem, messages));
+      showExpenseProblem(reading.problem);
       return;
     }
 
     const changedBill = addExpense(props.bill, reading.expense);
     if (!isTotalSpentWithinLimit(changedBill)) {
-      setMessage(messages.expenses.totalTooLargeError);
+      showExpenseProblem("totalTooLarge");
       return;
     }
 
     setAmountText("");
     setUncheckedIds(NO_UNCHECKED_IDS);
+    amountInput?.focus();
     props.onBillChange(changedBill);
+  }
+
+  function requestRemoval(expense: Expense): void {
+    const billBefore = props.bill;
+    const billAfter = removeExpense(billBefore, expense.id);
+    const { payerName, amountText, beneficiariesText } = describeExpense(
+      billBefore,
+      expense,
+      formatAmount,
+      messages,
+    );
+
+    props.onBillChange(billAfter);
+    rememberRemoval({
+      description: messages.expenses.removed(
+        payerName,
+        amountText,
+        beneficiariesText,
+      ),
+      billBefore,
+      billAfter,
+    });
+  }
+
+  function undoRemoval(billBefore: Bill): void {
+    props.onBillChange(billBefore);
+    amountInput?.focus();
   }
 
   return (
@@ -280,37 +340,59 @@ export function ExpensesSection(props: BillProps) {
         }}
       >
         <Field label={messages.expenses.payerLabel} inputId={PAYER_SELECT_ID}>
-          <select
-            id={PAYER_SELECT_ID}
-            onChange={(event) => {
-              setChosenPayerId(event.currentTarget.value);
-            }}
-          >
-            <For each={participants()}>
-              {(participant) => (
-                <option
-                  value={participant.id}
-                  selected={participant.id === payerId()}
-                >
-                  {participant.name}
-                </option>
-              )}
-            </For>
-          </select>
+          <SelectBox>
+            <select
+              id={PAYER_SELECT_ID}
+              onChange={(event) => {
+                setChosenPayerId(event.currentTarget.value);
+              }}
+            >
+              <For each={participants()}>
+                {(participant) => (
+                  <option
+                    value={participant.id}
+                    selected={participant.id === payerId()}
+                  >
+                    {participant.name}
+                  </option>
+                )}
+              </For>
+            </select>
+          </SelectBox>
         </Field>
         <Field label={amountLabel()} inputId={AMOUNT_INPUT_ID}>
           <input
+            ref={(element) => {
+              amountInput = element;
+            }}
             id={AMOUNT_INPUT_ID}
             type="text"
             inputmode="decimal"
             autocomplete="off"
+            placeholder={messages.expenses.amountPlaceholder}
             value={amountText()}
+            aria-invalid={hasAmountError() ? "true" : undefined}
+            aria-describedby={
+              hasAmountError() ? fieldErrorId(AMOUNT_INPUT_ID) : undefined
+            }
             onInput={(event) => {
               setAmountText(event.currentTarget.value);
+              setAmountError(NO_MESSAGE);
             }}
           />
+          <FieldError id={fieldErrorId(AMOUNT_INPUT_ID)} text={amountError()} />
         </Field>
-        <fieldset>
+        <fieldset
+          ref={(element) => {
+            beneficiariesFieldset = element;
+          }}
+          id={BENEFICIARIES_FIELDSET_ID}
+          aria-describedby={
+            hasBeneficiariesError()
+              ? fieldErrorId(BENEFICIARIES_FIELDSET_ID)
+              : undefined
+          }
+        >
           <legend>{messages.expenses.beneficiariesLegend}</legend>
           <div class="chips">
             <For each={participants()}>
@@ -325,11 +407,14 @@ export function ExpensesSection(props: BillProps) {
               )}
             </For>
           </div>
+          <FieldError
+            id={fieldErrorId(BENEFICIARIES_FIELDSET_ID)}
+            text={beneficiariesError()}
+          />
         </fieldset>
         <button class="button button-primary" type="submit">
           {messages.expenses.addButton}
         </button>
-        <MessageArea text={message()} />
       </form>
       <EmptyState
         icon="receipt"
@@ -344,12 +429,13 @@ export function ExpensesSection(props: BillProps) {
               expense={expense}
               formatAmount={formatAmount}
               onRemove={() => {
-                props.onBillChange(removeExpense(props.bill, expense.id));
+                requestRemoval(expense);
               }}
             />
           )}
         </For>
       </ul>
+      <UndoBar id={UNDO_TEXT_ID} removal={removal()} onUndo={undoRemoval} />
     </section>
   );
 }

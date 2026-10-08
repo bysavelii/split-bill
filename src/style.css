@@ -408,8 +408,41 @@ select {
   border-radius: var(--radius-control);
 }
 
+/* The system arrow is replaced by the chevron of .select-box; the right padding keeps long text from running under it. */
+select {
+  padding-inline-end: calc(var(--space-3) + var(--icon-size) + var(--space-2));
+  appearance: none;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
 input[readonly] {
   background: var(--color-background);
+}
+
+/* The format hint in an empty field is muted, but readable: it is the only place the format shows before a mistake. */
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+.select-box {
+  position: relative;
+}
+
+/* The glyph of the chevron starts a quarter of the icon's width inside its box, so the box is moved out by that much:
+   the visible chevron then sits as far from the right edge as the text from the left one. The chevron lets clicks through to the select. */
+.select-chevron {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: calc(var(--space-3) - var(--icon-size) / 4);
+  width: var(--icon-size);
+  height: var(--icon-size);
+  margin-block: auto;
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 
 .button {
@@ -482,7 +515,55 @@ input[readonly] {
 }
 
 .message.message-success {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
   color: var(--color-accent);
+}
+
+.message-icon {
+  flex-shrink: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.field-error {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-error);
+}
+
+/* An empty error stays in the markup for the screen reader but adds no space in any of its three places. */
+.field > .field-error:empty {
+  margin-top: calc(-1 * var(--space-1));
+}
+
+section > .field-error:empty {
+  margin-bottom: calc(-1 * var(--space-3));
+}
+
+fieldset > .field-error:not(:empty) {
+  margin-top: var(--space-2);
+}
+
+/* What was removed, and the way back. The text wraps; the button keeps its size. */
+.undo {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.undo p {
+  min-width: 0;
+}
+
+.undo button {
+  flex-shrink: 0;
 }
 
 .summary-status + .breakdown {

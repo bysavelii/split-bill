@@ -5,6 +5,7 @@ import {
   isParticipantInExpenses,
   MAX_NAME_LENGTH,
   removeParticipant,
+  type Bill,
   type NameProblem,
   type Participant,
 } from "../bill/bill";
@@ -12,14 +13,16 @@ import { formatNumber } from "../i18n/format";
 import type { Messages } from "../i18n/messages";
 import type { Locale } from "../i18n/locales";
 import { Avatar } from "./avatar";
-import { createBillMessage } from "./bill-message";
+import { createBillMessage, NO_MESSAGE } from "./bill-message";
 import type { BillProps } from "./bill-props";
 import { EmptyState } from "./empty-state";
-import { Field, MessageArea } from "./field";
+import { Field, fieldErrorId, FieldError, MessageArea } from "./field";
 import { useLocale } from "./locale-context";
 import { RemoveButton } from "./remove-button";
+import { createRemovalMemory, UndoBar } from "./undo-bar";
 
 const NAME_INPUT_ID = "participant-name";
+const UNDO_TEXT_ID = "participants-undo-text";
 
 function describeNameProblem(
   problem: NameProblem,
@@ -42,6 +45,9 @@ export function ParticipantsSection(props: BillProps) {
   const { locale, messages } = useLocale();
   const [name, setName] = createSignal("");
   const [message, setMessage] = createBillMessage(() => props.bill);
+  const [nameError, setNameError] = createBillMessage(() => props.bill);
+  const [removal, rememberRemoval] = createRemovalMemory(() => props.bill);
+  const hasNameError = () => nameError() !== NO_MESSAGE;
   let nameInput: HTMLInputElement | undefined;
 
   function submitName(): void {
@@ -49,7 +55,8 @@ export function ParticipantsSection(props: BillProps) {
 
     const problem = findNameProblem(props.bill, trimmedName);
     if (problem !== undefined) {
-      setMessage(describeNameProblem(problem, messages, locale));
+      setNameError(describeNameProblem(problem, messages, locale));
+      nameInput?.focus();
       return;
     }
 
@@ -68,7 +75,20 @@ export function ParticipantsSection(props: BillProps) {
       return;
     }
 
-    props.onBillChange(removeParticipant(props.bill, participant.id));
+    const billBefore = props.bill;
+    const billAfter = removeParticipant(billBefore, participant.id);
+
+    props.onBillChange(billAfter);
+    rememberRemoval({
+      description: messages.participants.removed(participant.name),
+      billBefore,
+      billAfter,
+    });
+  }
+
+  function undoRemoval(billBefore: Bill): void {
+    props.onBillChange(billBefore);
+    nameInput?.focus();
   }
 
   return (
@@ -90,8 +110,13 @@ export function ParticipantsSection(props: BillProps) {
             type="text"
             autocomplete="off"
             value={name()}
+            aria-invalid={hasNameError() ? "true" : undefined}
+            aria-describedby={
+              hasNameError() ? fieldErrorId(NAME_INPUT_ID) : undefined
+            }
             onInput={(event) => {
               setName(event.currentTarget.value);
+              setNameError(NO_MESSAGE);
             }}
           />
         </Field>
@@ -99,6 +124,7 @@ export function ParticipantsSection(props: BillProps) {
           {messages.participants.addButton}
         </button>
       </form>
+      <FieldError id={fieldErrorId(NAME_INPUT_ID)} text={nameError()} />
       <MessageArea text={message()} />
       <EmptyState
         icon="people"
@@ -121,6 +147,7 @@ export function ParticipantsSection(props: BillProps) {
           )}
         </For>
       </ul>
+      <UndoBar id={UNDO_TEXT_ID} removal={removal()} onUndo={undoRemoval} />
     </section>
   );
 }

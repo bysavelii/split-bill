@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-310d9e36",
+  "timestamp": "2026-10-08T13:08:38.448Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Undo of a removal restores the bill snapshot taken before it; the offer lives while the current bill is the very object the removal produced, with no timer",
+    "description": "Bills are immutable, so reference equality hides the offer on any other change without depending on effect order; no timer because of WCAG timing rules"
+  }
+}

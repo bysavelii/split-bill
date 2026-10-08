@@ -19,6 +19,7 @@ export const RU_MESSAGES: Messages = {
     cannotRemove: (name) =>
       `Нельзя удалить ${name}: есть траты с этим участником. Сначала удалите их`,
     removeLabel: (name) => `Удалить участника ${name}`,
+    removed: (name) => `Участник удалён: ${name}`,
   },
   expenses: {
     heading: "Траты",
@@ -26,6 +27,7 @@ export const RU_MESSAGES: Messages = {
     emptyHint: "Трат пока нет. Добавьте первую: кто платил, сколько и за кого",
     payerLabel: "Кто платил",
     amountLabel: (currencySymbol) => `Сколько, ${currencySymbol}`,
+    amountPlaceholder: "1500 или 349,90",
     beneficiariesLegend: "За кого",
     addButton: "Добавить трату",
     amountError: "Введите сумму больше нуля, например 1500 или 349,90",
@@ -36,6 +38,11 @@ export const RU_MESSAGES: Messages = {
     forBeneficiaries: (names) => `за: ${names.join(", ")}`,
     removeLabel: (payerName, amountText, beneficiariesText) =>
       `Удалить трату: ${payerName} — ${amountText}, ${beneficiariesText}`,
+    removed: (payerName, amountText, beneficiariesText) =>
+      `Трата удалена: ${payerName} — ${amountText}, ${beneficiariesText}`,
+  },
+  undo: {
+    button: "Вернуть",
   },
   summary: {
     heading: "Итог",
@@ -72,8 +79,9 @@ export const RU_MESSAGES: Messages = {
     note: "Счёт хранится в самой ссылке — без сервера и регистрации. Кто её откроет, увидит тот же счёт.",
     button: "Поделиться",
     linkLabel: "Ссылка на счёт",
-    copied: "Ссылка скопирована",
-    copyManually: "Скопируйте ссылку из поля",
+    copied: "Ссылка скопирована. Отправьте её друзьям — они увидят этот счёт",
+    copyManually:
+      "Скопировать автоматически не вышло: скопируйте ссылку из поля и отправьте друзьям",
   },
   linkNotice: {
     malformed:
