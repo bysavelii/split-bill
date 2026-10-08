@@ -1389,6 +1389,37 @@ describe("bill link", () => {
   });
 });
 
+describe("share links from the previous version", () => {
+  // A literal code, not produced by `encodeBill`: links already shared in the wild must keep opening,
+  // so this code must stay the same whatever the app is built with.
+  const LITERAL_CODE =
+    "1.W1si0JDQvdGPIiwi0JHQvtGA0Y8iLCLQktC10YDQsCIsItCT0L7RiNCwIl0sW1swLDQ4MDAwMCxbMCwxLDIsM11dLFsxLDEyNTA1MCxbMCwxLDJdXSxbMiw2MDAwMCxbMiwzXV1dXQ";
+
+  it("opens a bill by a literal code at the published address", () => {
+    history.replaceState(null, "", `/split-bill/#${LITERAL_CODE}`);
+
+    remountApp();
+
+    expect(readParticipantNames()).toEqual(["Аня", "Боря", "Вера", "Гоша"]);
+    expect(readExpenses()).toEqual([
+      "Аня — 4 800,00 ₽, за всех",
+      "Боря — 1 250,50 ₽, за: Аня, Боря, Вера",
+      "Вера — 600,00 ₽, за: Вера, Гоша",
+    ]);
+    expect(readSummary()).toEqual([
+      "Боря → Аня: 366,33 ₽",
+      "Вера → Аня: 1 316,83 ₽",
+      "Гоша → Аня: 1 500,00 ₽",
+    ]);
+    expect(readTexts(".page-header .overview-item")).toEqual([
+      "4 участника",
+      "3 траты",
+      "потрачено 6 650,50 ₽",
+    ]);
+    expect(root.querySelector<HTMLElement>(".notice")?.hidden).toBe(true);
+  });
+});
+
 function invalidBillCode(): string {
   return `1.${encodeBase64Url('[["Аня","аня"],[]]')}`;
 }
