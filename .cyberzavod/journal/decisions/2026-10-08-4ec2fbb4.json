@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Подписи кнопок удаления остаются полными: «Удалить участника Аня», «Удалить трату: Аня — 900,00 ₽, за всех»",
-    "description": "Склонять произвольные имена без морфологической библиотеки нельзя, а полная подпись различает траты одного плательщика"
+    "title": "The captions of the delete buttons stay full: \"Remove participant Ann\", \"Remove expense: Ann — 900,00 ₽, for everyone\"",
+    "description": "Arbitrary names cannot be declined without a morphology library, and the full caption tells apart the expenses of one payer"
   }
 }

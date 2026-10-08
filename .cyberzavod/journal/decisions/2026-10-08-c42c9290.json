@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Вид интерфейса задаётся токенами в :root src/style.css; цвета и размеры вне токенов не пишутся, контраст пар — не ниже WCAG AA, правила — в AGENTS.md «Стиль интерфейса»",
-    "description": "Один источник правды, чтобы следующие задачи держали тот же вид в обеих темах"
+    "title": "The look of the interface is set by tokens in :root of src/style.css; colors and sizes outside tokens are not written, the contrast of pairs is no lower than WCAG AA, the rules are in AGENTS.md \"Interface style\"",
+    "description": "One source of truth, so that the next tasks keep the same look in both themes"
   }
 }

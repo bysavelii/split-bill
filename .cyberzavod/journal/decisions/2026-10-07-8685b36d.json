@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Минимум переводов — точный перебор подмножеств до 16 участников с ненулевым балансом, за пределом — жадный расчёт с пометкой isMinimal: false",
-    "description": "Задача NP-трудная; O(2ⁿ·n) при n = 16 — около 15 мс, а каждый следующий человек удваивает перебор; интерфейс честно говорит, когда минимум не гарантирован"
+    "title": "The minimum number of transfers is an exact search over subsets for up to 16 participants with a non-zero balance; beyond that, a greedy calculation marked isMinimal: false",
+    "description": "The problem is NP-hard; O(2ⁿ·n) at n = 16 takes about 15 ms, and every next person doubles the search; the interface honestly says when the minimum is not guaranteed"
   }
 }

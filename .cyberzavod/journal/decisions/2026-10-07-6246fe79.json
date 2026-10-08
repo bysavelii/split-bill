@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Состояние счёта — во фрагменте адреса, формат «<версия>.<base64url(JSON)>», адрес обновляется через replaceState при каждом изменении",
-    "description": "Работает при любом base-пути (GitHub Pages), версия открытым текстом позволяет распознать старую ссылку, а перезагрузка не теряет счёт"
+    "title": "The bill state lives in the address fragment, in the format \"<version>.<base64url(JSON)>\", and the address is updated through replaceState on every change",
+    "description": "It works under any base path (GitHub Pages), the version in plain text lets us recognize an old link, and a reload does not lose the bill"
   }
 }

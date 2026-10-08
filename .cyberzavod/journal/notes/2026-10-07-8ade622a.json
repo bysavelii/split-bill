@@ -8,6 +8,6 @@
   },
   "type": "note",
   "data": {
-    "text": "Осознанное ограничение: счёт с сотнями участников или тысячами трат даёт код длиннее MAX_BILL_CODE_LENGTH (100 000 знаков) и по ссылке откроется как повреждённый"
+    "text": "A deliberate limitation: a bill with hundreds of participants or thousands of expenses gives a code longer than MAX_BILL_CODE_LENGTH (100,000 characters) and opens from the link as corrupted"
   }
 }

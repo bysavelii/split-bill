@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Имена участников уникальны без учёта регистра; участника, который есть в тратах, удалить нельзя",
-    "description": "Итог вида «Аня → Аня» непонятен; молча удалять траты хуже, чем попросить удалить их явно"
+    "title": "Participant names are unique ignoring case; a participant who is in the expenses cannot be removed",
+    "description": "A result like \"Ann → Ann\" is confusing; silently deleting expenses is worse than asking to delete them explicitly"
   }
 }

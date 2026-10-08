@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Vite собирает с base: \"./\", выкладка на GitHub Pages — workflow на push в main с make check перед выкладкой",
-    "description": "Относительные пути работают в любом подкаталоге без имени владельца в коде; одна сборка из make check идёт в Pages, проверки не обходятся"
+    "title": "Vite builds with base: \"./\", deployment to GitHub Pages is a workflow on push to main with make check before the deployment",
+    "description": "Relative paths work in any subdirectory without the owner's name in the code; the one build from make check goes to Pages, the checks are not bypassed"
   }
 }
