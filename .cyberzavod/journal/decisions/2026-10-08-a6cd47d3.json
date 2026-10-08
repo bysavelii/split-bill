@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-a6cd47d3",
+  "timestamp": "2026-10-08T14:56:38.569Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "After cyberzavod publish, the harness's Russian stage_fail reasons in a new session record are replaced with their English meaning before the commit",
+    "description": "cyberzavod draft writes them in Russian even in English sessions, and the language check would fail otherwise"
+  }
+}

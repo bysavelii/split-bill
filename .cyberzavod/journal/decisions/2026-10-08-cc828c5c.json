@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-cc828c5c",
+  "timestamp": "2026-10-08T14:56:38.398Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Tests of the Russian page take texts from DICTIONARIES.ru, and non-Latin test input uses Greek, CJK or emoji instead of Cyrillic",
+    "description": "Tests stay free of Russian literals without losing coverage of the Russian page or of non-Latin input"
+  }
+}

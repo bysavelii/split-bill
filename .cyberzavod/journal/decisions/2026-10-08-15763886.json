@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-15763886",
+  "timestamp": "2026-10-08T14:56:38.489Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": ".claude/settings.json is a whole-file exception of the language check",
+    "description": "cyberzavod sync writes the Russian status message of the Stop hook there, and generated files are not edited in this project"
+  }
+}
