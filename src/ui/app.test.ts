@@ -122,9 +122,20 @@ function readExpensesMessage(): string {
 
 function readSummary(): string[] {
   const summary = readSummarySection();
-  const items = [...summary.querySelectorAll(".transfers li")];
-  if (items.length > 0) return items.map((item) => normalize(item.textContent));
-  return [normalize(summary.querySelector("p")?.textContent ?? "")];
+  const cards = [...summary.querySelectorAll(".transfer")];
+  if (cards.length > 0) {
+    return cards.map((card) => {
+      const from = normalize(card.querySelector(".transfer-from")?.textContent);
+      const to = normalize(card.querySelector(".transfer-to")?.textContent);
+      const amount = normalize(
+        card.querySelector(".transfer-amount")?.textContent,
+      );
+
+      return `${from} → ${to}: ${amount}`;
+    });
+  }
+
+  return [normalize(summary.querySelector(".summary-status")?.textContent)];
 }
 
 function readSummarySection(): HTMLElement {
@@ -154,8 +165,13 @@ function findRemoveExpenseButton(description: string): HTMLButtonElement {
 }
 
 function readBreakdown(): string[] {
-  const rows = readSummarySection().querySelectorAll(".breakdown li");
-  return [...rows].map((row) => normalize(row.textContent));
+  const rows = readSummarySection().querySelectorAll("tbody tr");
+
+  return [...rows].map((row) =>
+    [...row.querySelectorAll("th, td")]
+      .map((cell) => normalize(cell.textContent))
+      .join(" | "),
+  );
 }
 
 function readReason(): string | undefined {
@@ -426,13 +442,45 @@ describe("объяснение итога", () => {
 
     expect(readParagraphs()).toContain("Всего потрачено: 900,00 ₽");
     expect(readBreakdown()).toEqual([
-      "Аня: заплачено 900,00 ₽, доля 300,00 ₽ — получает 600,00 ₽",
-      "Боря: заплачено 0,00 ₽, доля 300,00 ₽ — отдаёт 300,00 ₽",
-      "Вера: заплачено 0,00 ₽, доля 300,00 ₽ — отдаёт 300,00 ₽",
+      "Аня | 900,00 ₽ | 300,00 ₽ | получает +600,00 ₽",
+      "Боря | 0,00 ₽ | 300,00 ₽ | отдаёт −300,00 ₽",
+      "Вера | 0,00 ₽ | 300,00 ₽ | отдаёт −300,00 ₽",
     ]);
-    expect(readSummarySection().querySelector("h3")?.textContent).toBe(
-      "Как посчитано",
-    );
+    expect(
+      readSummarySection().querySelector("details > summary")?.textContent,
+    ).toBe("Как посчитано");
+  });
+
+  it("различает «получает» и «отдаёт» классом, знаком и словом", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    uncheckBeneficiary("Вера");
+    addExpenseBy("Аня", "100");
+
+    const outcomes = [...readSummarySection().querySelectorAll("td.outcome")];
+
+    expect(outcomes.map((outcome) => outcome.className)).toEqual([
+      "outcome outcome-receives",
+      "outcome outcome-gives",
+      "outcome outcome-settled",
+    ]);
+    expect(outcomes.map((outcome) => normalize(outcome.textContent))).toEqual([
+      "получает +50,00 ₽",
+      "отдаёт \u221250,00 ₽",
+      "в расчёте",
+    ]);
+  });
+
+  it("причину числа переводов прячет внутрь «Как посчитано»", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    const breakdown = readSummarySection().querySelector("details");
+
+    expect(breakdown?.open).toBe(false);
+    expect(breakdown?.querySelector(".transfers-reason")).not.toBeNull();
+    expect(
+      readSummarySection().querySelectorAll(".transfers-reason"),
+    ).toHaveLength(1);
   });
 
   it("объясняет, почему переводов именно столько", () => {
@@ -476,8 +524,8 @@ describe("объяснение итога", () => {
     expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
     expect(readReason()).toBeUndefined();
     expect(readBreakdown()).toEqual([
-      "Аня: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
-      "Боря: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
+      "Аня | 500,00 ₽ | 500,00 ₽ | в расчёте",
+      "Боря | 500,00 ₽ | 500,00 ₽ | в расчёте",
     ]);
   });
 
@@ -523,9 +571,7 @@ describe("объяснение итога", () => {
     addExpenseBy("Аня", "500");
 
     expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
-    expect(readBreakdown()).toEqual([
-      "Аня: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
-    ]);
+    expect(readBreakdown()).toEqual(["Аня | 500,00 ₽ | 500,00 ₽ | в расчёте"]);
   });
 
   it("участник без трат попадает в разбор строкой «в расчёте»", () => {
@@ -534,9 +580,9 @@ describe("объяснение итога", () => {
     addExpenseBy("Аня", "100");
 
     expect(readBreakdown()).toEqual([
-      "Аня: заплачено 100,00 ₽, доля 50,00 ₽ — получает 50,00 ₽",
-      "Боря: заплачено 0,00 ₽, доля 50,00 ₽ — отдаёт 50,00 ₽",
-      "Вера: заплачено 0,00 ₽, доля 0,00 ₽ — в расчёте",
+      "Аня | 100,00 ₽ | 50,00 ₽ | получает +50,00 ₽",
+      "Боря | 0,00 ₽ | 50,00 ₽ | отдаёт −50,00 ₽",
+      "Вера | 0,00 ₽ | 0,00 ₽ | в расчёте",
     ]);
   });
 
@@ -550,9 +596,60 @@ describe("объяснение итога", () => {
   it("без трат не показывает «Как посчитано»", () => {
     addParticipants("Аня", "Боря");
 
-    expect(readSummarySection().querySelector("h3")).toBeNull();
-    expect(readSummarySection().querySelector(".breakdown")).toBeNull();
+    expect(readSummarySection().querySelector("details")).toBeNull();
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
+  });
+});
+
+describe("карточки переводов", () => {
+  it("над карточками пишет, сколько переводов нужно", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    const count = readSummarySection().querySelector(".transfers-count");
+
+    expect(normalize(count?.textContent)).toBe(
+      "Чтобы рассчитаться, нужно 2 перевода",
+    );
+    expect(count?.nextElementSibling?.classList.contains("transfers")).toBe(
+      true,
+    );
+  });
+
+  it("когда все в расчёте, строки про число переводов нет", () => {
+    addParticipant("Аня");
+    addExpense("100");
+
+    expect(readSummarySection().querySelector(".transfers-count")).toBeNull();
+  });
+
+  it("у участников карточки те же оттенки аватаров, что в чипах", () => {
+    addParticipants("Аня", "Боря");
+    addExpenseBy("Боря", "100");
+
+    const chipTones = [...root.querySelectorAll(".chip .avatar")].map(
+      (avatar) => avatar.className,
+    );
+    const cardTones = [
+      ...readSummarySection().querySelectorAll(".transfer-people .avatar"),
+    ].map((avatar) => avatar.className);
+
+    expect(readSummary()).toEqual(["Аня → Боря: 50,00 ₽"]);
+    expect(cardTones).toEqual(chipTones);
+  });
+
+  it("подсказка в итоге видна без трат и когда все в расчёте", () => {
+    const summaryHint = (): string | undefined =>
+      normalize(
+        readSummarySection().querySelector(".empty-state")?.textContent,
+      );
+
+    expect(summaryHint()).toBe(EMPTY_SUMMARY);
+
+    addParticipant("Аня");
+    addExpense("100");
+
+    expect(summaryHint()).toBe("Все в расчёте — переводы не нужны");
   });
 });
 

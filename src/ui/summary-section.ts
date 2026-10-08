@@ -8,12 +8,15 @@ import {
   type Transfer,
   type TransferPlan,
 } from "../settlement/transfers";
+import { createAvatar } from "./avatar";
 import { createElement } from "./dom";
+import { createEmptyState } from "./empty-state";
+import { createIcon } from "./icons";
 import type { Section } from "./section";
 import {
   ROUNDING_NOTE,
   SHARE_NOTE,
-  describeParticipantTotals,
+  describeBalanceOutcome,
   describeTransferCount,
   formatTransferCount,
 } from "./settlement-explanation";
@@ -22,9 +25,13 @@ const NO_EXPENSES_TEXT =
   "Добавьте траты — здесь появится, кто кому сколько должен";
 const NO_TRANSFERS_TEXT = "Все в расчёте — переводы не нужны";
 const BREAKDOWN_TITLE = "Как посчитано";
+const ROUTE_SEPARATOR = " → ";
+const STATUS_CLASS = "summary-status";
 
 const NO_EXPENSES_ANNOUNCEMENT = "Итог: трат пока нет";
 const NO_TRANSFERS_ANNOUNCEMENT = "Итог: все в расчёте, переводы не нужны";
+
+const BREAKDOWN_COLUMNS = ["Участник", "Заплатил", "Доля", "Итог"];
 
 export function createSummarySection(): Section {
   const content = createElement("div");
@@ -52,7 +59,9 @@ export function createSummarySection(): Section {
 
   function render(bill: Bill): void {
     if (bill.expenses.length === 0) {
-      content.replaceChildren(createElement("p", { text: NO_EXPENSES_TEXT }));
+      content.replaceChildren(
+        createEmptyState("receipt", NO_EXPENSES_TEXT, STATUS_CLASS),
+      );
       announce(NO_EXPENSES_ANNOUNCEMENT);
       return;
     }
@@ -61,8 +70,8 @@ export function createSummarySection(): Section {
     const plan = calculateTransfers(balances);
 
     const transferNodes = createTransferNodes(bill, plan);
-    const breakdownNodes = createBreakdownNodes(bill, balances);
-    content.replaceChildren(...transferNodes, ...breakdownNodes);
+    const breakdown = createBreakdown(bill, balances, plan);
+    content.replaceChildren(...transferNodes, breakdown);
     announce(describeTransferTotal(plan));
   }
 
@@ -77,36 +86,54 @@ function describeTransferTotal(plan: TransferPlan): string {
 
 function createTransferNodes(bill: Bill, plan: TransferPlan): HTMLElement[] {
   if (plan.transfers.length === 0) {
-    return [createElement("p", { text: NO_TRANSFERS_TEXT })];
+    return [createEmptyState("check", NO_TRANSFERS_TEXT, STATUS_CLASS)];
   }
 
-  const rows = plan.transfers.map((transfer) =>
-    createElement("li", { text: describeTransfer(bill, transfer) }),
+  const count = formatTransferCount(plan.transfers.length);
+  const cards = plan.transfers.map((transfer) =>
+    createTransferCard(bill, transfer),
   );
-  const reason = describeTransferCount({
-    transferCount: plan.transfers.length,
-    settlingCount: plan.settlingCount,
-    isMinimal: plan.isMinimal,
-  });
 
   return [
-    createElement("ul", { className: "list transfers" }, rows),
-    createElement("p", { className: "transfers-reason", text: reason }),
+    createElement("p", {
+      className: "transfers-count",
+      text: `Чтобы рассчитаться, нужно ${count}`,
+    }),
+    createElement("ul", { className: "transfers" }, cards),
   ];
 }
 
-function createBreakdownNodes(
+function createTransferCard(bill: Bill, transfer: Transfer): HTMLLIElement {
+  const fromName = getParticipantName(bill, transfer.fromId);
+  const toName = getParticipantName(bill, transfer.toId);
+  const people = createElement("span", { className: "transfer-people" }, [
+    createAvatar(fromName),
+    createIcon("arrow"),
+    createAvatar(toName),
+  ]);
+  const route = createElement("span", { className: "transfer-route" }, [
+    createElement("span", { className: "transfer-from", text: fromName }),
+    document.createTextNode(ROUTE_SEPARATOR),
+    createElement("span", { className: "transfer-to", text: toName }),
+  ]);
+  const amount = createElement("span", {
+    className: "amount transfer-amount",
+    text: formatRubles(transfer.amount),
+  });
+
+  return createElement("li", { className: "transfer" }, [
+    people,
+    route,
+    amount,
+  ]);
+}
+
+function createBreakdown(
   bill: Bill,
   balances: readonly Balance[],
-): HTMLElement[] {
+  plan: TransferPlan,
+): HTMLDetailsElement {
   const totalSpent = formatRubles(calculateTotalSpent(bill));
-  const rows = balances.map((balance) => {
-    const name = getParticipantName(bill, balance.participantId);
-
-    return createElement("li", {
-      text: describeParticipantTotals(name, balance),
-    });
-  });
   const notes = hasUnevenSplit(bill)
     ? [SHARE_NOTE, ROUNDING_NOTE]
     : [SHARE_NOTE];
@@ -114,17 +141,63 @@ function createBreakdownNodes(
     createElement("p", { className: "note", text: note }),
   );
 
-  return [
-    createElement("h3", { text: BREAKDOWN_TITLE }),
+  return createElement("details", { className: "breakdown" }, [
+    createElement("summary", { text: BREAKDOWN_TITLE }),
+    ...createReasonNodes(plan),
     createElement("p", { text: `Всего потрачено: ${totalSpent}` }),
-    createElement("ul", { className: "list breakdown" }, rows),
+    createBreakdownTable(bill, balances),
     ...noteNodes,
-  ];
+  ]);
 }
 
-function describeTransfer(bill: Bill, transfer: Transfer): string {
-  const fromName = getParticipantName(bill, transfer.fromId);
-  const toName = getParticipantName(bill, transfer.toId);
+function createReasonNodes(plan: TransferPlan): HTMLElement[] {
+  if (plan.transfers.length === 0) return [];
 
-  return `${fromName} → ${toName}: ${formatRubles(transfer.amount)}`;
+  const reason = describeTransferCount({
+    transferCount: plan.transfers.length,
+    settlingCount: plan.settlingCount,
+    isMinimal: plan.isMinimal,
+  });
+
+  return [createElement("p", { className: "transfers-reason", text: reason })];
+}
+
+function createBreakdownTable(
+  bill: Bill,
+  balances: readonly Balance[],
+): HTMLDivElement {
+  const headerCells = BREAKDOWN_COLUMNS.map((title) =>
+    createElement("th", { text: title, attributes: { scope: "col" } }),
+  );
+  const head = createElement("thead", {}, [
+    createElement("tr", {}, headerCells),
+  ]);
+  const rows = balances.map((balance) => createBreakdownRow(bill, balance));
+  const table = createElement("table", {}, [
+    head,
+    createElement("tbody", {}, rows),
+  ]);
+
+  return createElement("div", { className: "table-scroll" }, [table]);
+}
+
+function createBreakdownRow(bill: Bill, balance: Balance): HTMLTableRowElement {
+  const name = getParticipantName(bill, balance.participantId);
+  const outcome = describeBalanceOutcome(balance.amount);
+
+  return createElement("tr", {}, [
+    createElement("th", { text: name, attributes: { scope: "row" } }),
+    createElement("td", {
+      className: "amount",
+      text: formatRubles(balance.paid),
+    }),
+    createElement("td", {
+      className: "amount",
+      text: formatRubles(balance.share),
+    }),
+    createElement("td", {
+      className: `outcome outcome-${outcome.kind}`,
+      text: outcome.text,
+    }),
+  ]);
 }

@@ -418,29 +418,6 @@ input[readonly] {
   height: var(--icon-size);
 }
 
-.list {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.list li > span {
-  min-width: 0;
-}
-
-.list li button {
-  flex-shrink: 0;
-}
-
 .message {
   min-height: 1.5em;
   margin: 0;
@@ -452,8 +429,116 @@ input[readonly] {
   color: var(--color-accent);
 }
 
-h3 {
-  margin: var(--space-4) 0 var(--space-2);
+.summary-status {
+  margin-bottom: var(--space-4);
+}
+
+.transfers-count {
+  font-weight: 600;
+}
+
+.transfers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  list-style: none;
+}
+
+.transfer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "people amount"
+    "route route";
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.transfer-people {
+  display: inline-flex;
+  grid-area: people;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.transfer-people svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--color-text-muted);
+}
+
+.transfer-route {
+  grid-area: route;
+  font-weight: 600;
+}
+
+.transfer-amount {
+  grid-area: amount;
+  font-size: var(--font-size-section-title);
+  font-weight: 700;
+}
+
+.breakdown {
+  border-top: 1px solid var(--color-border);
+}
+
+.breakdown > summary {
+  padding: var(--space-3) 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.breakdown table {
+  width: 100%;
+  font-size: var(--font-size-caption);
+  border-collapse: collapse;
+}
+
+.breakdown th,
+.breakdown td {
+  padding: var(--space-2) var(--space-1);
+  text-align: right;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.breakdown th:first-child {
+  text-align: left;
+}
+
+.breakdown thead th {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.breakdown tbody th {
+  font-weight: 600;
+}
+
+.outcome {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.outcome-receives {
+  color: var(--color-receives);
+}
+
+.outcome-gives {
+  color: var(--color-gives);
+}
+
+.outcome-settled {
+  color: var(--color-text-muted);
 }
 
 .note {
