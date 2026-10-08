@@ -4,7 +4,7 @@ import { decodeBase64Url, encodeBase64Url } from "./base64-url";
 describe("encodeBase64Url and decodeBase64Url", () => {
   it.each([
     ["ASCII", "hello, world"],
-    ["Cyrillic", "Привет, Аня и Боря"],
+    ["Greek", "Γεια σου, Άννα"],
     ["emoji", "👩‍👩‍👧"],
     ["empty string", ""],
   ])("returns the original text: %s", (_title, text) => {
@@ -12,19 +12,19 @@ describe("encodeBase64Url and decodeBase64Url", () => {
   });
 
   it("does not use the characters +, / and =", () => {
-    const text = "???>>>~~~ яяя ÿÿÿ 👩‍👩‍👧 ".repeat(5);
+    const text = "???>>>~~~ ωωω ÿÿÿ 👩‍👩‍👧 ".repeat(5);
 
     expect(encodeBase64Url(text)).toMatch(/^[A-Za-z0-9_-]*$/u);
   });
 
   it("encodes a long text without a stack overflow", () => {
-    const text = "я".repeat(300_000);
+    const text = "ω".repeat(300_000);
 
     expect(decodeBase64Url(encodeBase64Url(text))).toBe(text);
   });
 
   it("keeps the byte order mark at the start of the text", () => {
-    const text = "﻿текст";
+    const text = "﻿κείμενο";
 
     expect(decodeBase64Url(encodeBase64Url(text))).toBe(text);
   });

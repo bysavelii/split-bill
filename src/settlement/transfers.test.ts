@@ -59,9 +59,9 @@ function expectSettled(balances: readonly Balance[]): void {
 }
 
 const participants: Participant[] = [
-  { id: "a", name: "А" },
-  { id: "b", name: "Б" },
-  { id: "c", name: "В" },
+  { id: "a", name: "A" },
+  { id: "b", name: "B" },
+  { id: "c", name: "C" },
 ];
 
 function planForBill(
@@ -416,7 +416,7 @@ describe("boundary cases of a bill", () => {
   it("one participant paying for themselves: no transfers", () => {
     const { balances, plan } = planForBill(
       [{ id: "1", payerId: "a", amount: 12_345, beneficiaryIds: ["a"] }],
-      [{ id: "a", name: "А" }],
+      [{ id: "a", name: "A" }],
     );
 
     expect(balances.map((balance) => balance.amount)).toEqual([0]);
