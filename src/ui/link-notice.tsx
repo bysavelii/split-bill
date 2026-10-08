@@ -1,15 +1,14 @@
 import type { BillCodeError } from "../sharing/bill-code";
-import { createElement } from "./dom";
 
 const MALFORMED_LINK_TEXT =
   "Не получилось открыть счёт по ссылке: она повреждена или скопирована не целиком. Попросите прислать её ещё раз, а пока можно начать новый счёт.";
 const UNSUPPORTED_VERSION_TEXT =
   "Эта ссылка сделана в другой версии приложения, и открыть её здесь не получится. Попросите прислать новую ссылку, а пока можно начать новый счёт.";
 
-export interface LinkNotice {
-  readonly element: HTMLElement;
-  readonly show: (text: string) => void;
-  readonly hide: () => void;
+export interface LinkNoticeProps {
+  readonly text: string;
+  readonly isHidden: boolean;
+  readonly onClose: () => void;
 }
 
 export function describeBillCodeError(error: BillCodeError): string {
@@ -23,30 +22,20 @@ export function describeBillCodeError(error: BillCodeError): string {
 }
 
 /** A message above the sections; "Закрыть" only hides it. */
-export function createLinkNotice(): LinkNotice {
-  const text = createElement("p");
-  const closeButton = createElement("button", {
-    text: "Закрыть",
-    className: "button button-secondary",
-    attributes: { type: "button", "aria-label": "Закрыть сообщение" },
-  });
-  const element = createElement(
-    "div",
-    { className: "notice", attributes: { role: "alert" } },
-    [text, closeButton],
+export function LinkNotice(props: LinkNoticeProps) {
+  return (
+    <div class="notice" role="alert" hidden={props.isHidden}>
+      <p>{props.text}</p>
+      <button
+        type="button"
+        class="button button-secondary"
+        aria-label="Закрыть сообщение"
+        onClick={() => {
+          props.onClose();
+        }}
+      >
+        Закрыть
+      </button>
+    </div>
   );
-  element.hidden = true;
-
-  function show(message: string): void {
-    text.textContent = message;
-    element.hidden = false;
-  }
-
-  function hide(): void {
-    element.hidden = true;
-  }
-
-  closeButton.addEventListener("click", hide);
-
-  return { element, show, hide };
 }

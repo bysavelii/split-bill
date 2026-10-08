@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import { fireEvent, render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_NAME_LENGTH, type Bill } from "../bill/bill";
 import { encodeBase64Url } from "../sharing/base64-url";
 import { decodeBill, encodeBill } from "../sharing/bill-code";
-import { mountApp } from "./app";
+import { App } from "./app";
 
 let root: HTMLElement;
 let unmountApp: () => void;
@@ -36,12 +37,12 @@ function findButton(name: string): HTMLButtonElement {
 }
 
 function addParticipant(name: string): void {
-  findInput("Имя").value = name;
+  fireEvent.input(findInput("Имя"), { target: { value: name } });
   findButton("Добавить").click();
 }
 
 function addExpense(amount: string): void {
-  findInput("Сколько, ₽").value = amount;
+  fireEvent.input(findInput("Сколько, ₽"), { target: { value: amount } });
   findButton("Добавить трату").click();
 }
 
@@ -52,7 +53,7 @@ function selectPayer(name: string): void {
   );
   if (select === null || option === undefined)
     throw new Error(`Payer ${name} not found`);
-  select.value = option.value;
+  fireEvent.change(select, { target: { value: option.value } });
 }
 
 function addParticipants(...names: string[]): void {
@@ -73,7 +74,7 @@ function uncheckBeneficiary(name: string): void {
   const checkbox = label?.querySelector("input");
   if (checkbox === null || checkbox === undefined)
     throw new Error(`Checkbox ${name} not found`);
-  checkbox.checked = false;
+  if (checkbox.checked) fireEvent.click(checkbox);
 }
 
 function readTexts(selector: string): string[] {
@@ -199,7 +200,7 @@ function remountApp(): void {
   const app = document.getElementById("app");
   if (app === null) throw new Error("#app not found");
   root = app;
-  unmountApp = mountApp(root);
+  unmountApp = render(() => <App />, { container: root }).unmount;
 }
 
 beforeEach(() => {

@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import prettierConfig from "eslint-config-prettier";
+import solid from "eslint-plugin-solid/configs/typescript";
 import tseslint from "typescript-eslint";
 
 const DOM_GLOBALS = [
@@ -32,6 +33,10 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
+    files: ["src/**/*.tsx"],
+    ...solid,
+  },
+  {
     // Domain logic and link encoding know nothing about the DOM and the interface.
     files: ["src/bill/**", "src/settlement/**", "src/sharing/**"],
     rules: {
@@ -49,6 +54,10 @@ export default tseslint.config(
             {
               group: ["**/ui/**"],
               message: "Code without the DOM must not import the interface",
+            },
+            {
+              group: ["solid-js*", "astro*"],
+              message: "Code without the DOM must not import the frameworks",
             },
           ],
         },

@@ -1,5 +1,3 @@
-import { createElement } from "./dom";
-
 /** That many tones are set by the `--color-avatar-1…` tokens in style.css: change them together. */
 export const AVATAR_TONE_COUNT = 8;
 
@@ -8,6 +6,10 @@ const FNV_PRIME = 0x01_00_01_93;
 const graphemeSegmenter = new Intl.Segmenter("ru-RU", {
   granularity: "grapheme",
 });
+
+export interface AvatarProps {
+  readonly name: string;
+}
 
 /** Tone number from 0 to `AVATAR_TONE_COUNT - 1`: the same name always gets the same one. */
 export function pickAvatarTone(name: string): number {
@@ -29,12 +31,15 @@ export function readInitial(name: string): string {
 }
 
 /** A circle with the first letter of the name; the screen reader skips it because the name is read next to it. */
-export function createAvatar(name: string): HTMLSpanElement {
-  const toneClass = `avatar-tone-${String(pickAvatarTone(name) + 1)}`;
+export function Avatar(props: AvatarProps) {
+  const toneNumber = () => pickAvatarTone(props.name) + 1;
 
-  return createElement("span", {
-    text: readInitial(name),
-    className: `avatar ${toneClass}`,
-    attributes: { "aria-hidden": "true" },
-  });
+  return (
+    <span
+      class={`avatar avatar-tone-${String(toneNumber())}`}
+      aria-hidden="true"
+    >
+      {readInitial(props.name)}
+    </span>
+  );
 }

@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { cleanup, render } from "@solidjs/testing-library";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   AVATAR_TONE_COUNT,
-  createAvatar,
+  Avatar,
   pickAvatarTone,
   readInitial,
 } from "./avatar";
+
+afterEach(cleanup);
 
 const TWENTY_NAMES = [
   "Аня",
@@ -66,9 +69,11 @@ describe("readInitial", () => {
   });
 });
 
-describe("createAvatar", () => {
+describe("Avatar", () => {
   it("is hidden from the screen reader, shows the first letter and carries the tone class", () => {
-    const avatar = createAvatar("боря");
+    const avatar = render(() => <Avatar name="боря" />).container
+      .firstElementChild;
+    if (avatar === null) throw new Error("Avatar not rendered");
 
     const toneNumber = pickAvatarTone("боря") + 1;
     expect(avatar.getAttribute("aria-hidden")).toBe("true");

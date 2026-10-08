@@ -39,6 +39,7 @@
       "typescript"
     ],
     "frameworks": [
+      "solid",
       "astro"
     ],
     "packageManager": "npm"

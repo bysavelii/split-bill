@@ -1,4 +1,6 @@
 ---
+import "../style.css";
+import { App } from "../ui/app";
 ---
 
 <!doctype html>
@@ -15,7 +17,8 @@
     <title>Делим счёт</title>
   </head>
   <body>
-    <main id="app"></main>
-    <script src="../main.ts"></script>
+    <main id="app">
+      <App client:load />
+    </main>
   </body>
 </html>
