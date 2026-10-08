@@ -609,6 +609,54 @@ describe("ошибки ввода", () => {
 
     expect(readTexts("section:nth-of-type(1) li")).toEqual([]);
   });
+
+  it("сохраняет выбранного плательщика после добавления участника", () => {
+    addParticipants("Аня", "Боря");
+    selectPayer("Боря");
+
+    addParticipant("Вера");
+
+    expect(root.querySelector("select")?.selectedOptions[0]?.text).toBe("Боря");
+  });
+
+  it("после удаления выбранного плательщика выбирает оставшегося участника", () => {
+    addParticipants("Аня", "Боря");
+    selectPayer("Боря");
+
+    findByLabel("Удалить участника Боря").click();
+    addExpense("100");
+
+    expect(root.querySelector("select")?.selectedOptions[0]?.text).toBe("Аня");
+    expect(readTexts("section:nth-of-type(2) li span")).toEqual([
+      "Аня — 100,00 ₽, за всех",
+    ]);
+  });
+
+  it("после ошибки суммы и исправления добавляет трату и убирает сообщение", () => {
+    addParticipant("Аня");
+    addExpense("abc");
+    expect(readExpensesMessage()).not.toBe("");
+
+    addExpense("250");
+
+    expect(readExpensesMessage()).toBe("");
+    expect(readTexts("section:nth-of-type(2) li span")).toEqual([
+      "Аня — 250,00 ₽, за всех",
+    ]);
+  });
+
+  it("при превышении предела суммы оставляет введённое в форме", () => {
+    addParticipant("Аня");
+    addExpense("90071992547407,69");
+    uncheckBeneficiary("Аня");
+
+    addExpense("90071992547404,61");
+
+    expect(findInput("Сколько, ₽").value).toBe("90071992547404,61");
+    expect(
+      root.querySelector<HTMLInputElement>("label.checkbox input")?.checked,
+    ).toBe(false);
+  });
 });
 
 describe("экранирование", () => {
