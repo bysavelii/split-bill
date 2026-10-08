@@ -1,41 +1,41 @@
 import { describe, expect, it } from "vitest";
 import { decodeBase64Url, encodeBase64Url } from "./base64-url";
 
-describe("encodeBase64Url и decodeBase64Url", () => {
+describe("encodeBase64Url and decodeBase64Url", () => {
   it.each([
     ["ASCII", "hello, world"],
-    ["кириллица", "Привет, Аня и Боря"],
-    ["эмодзи", "👩‍👩‍👧"],
-    ["пустая строка", ""],
-  ])("возвращает исходный текст: %s", (_title, text) => {
+    ["Cyrillic", "Привет, Аня и Боря"],
+    ["emoji", "👩‍👩‍👧"],
+    ["empty string", ""],
+  ])("returns the original text: %s", (_title, text) => {
     expect(decodeBase64Url(encodeBase64Url(text))).toBe(text);
   });
 
-  it("не использует знаки +, / и =", () => {
+  it("does not use the characters +, / and =", () => {
     const text = "???>>>~~~ яяя ÿÿÿ 👩‍👩‍👧 ".repeat(5);
 
     expect(encodeBase64Url(text)).toMatch(/^[A-Za-z0-9_-]*$/u);
   });
 
-  it("кодирует длинный текст без переполнения стека", () => {
+  it("encodes a long text without a stack overflow", () => {
     const text = "я".repeat(300_000);
 
     expect(decodeBase64Url(encodeBase64Url(text))).toBe(text);
   });
 
-  it("сохраняет метку порядка байтов в начале текста", () => {
+  it("keeps the byte order mark at the start of the text", () => {
     const text = "﻿текст";
 
     expect(decodeBase64Url(encodeBase64Url(text))).toBe(text);
   });
 
   it.each([
-    ["чужие знаки", "!!!"],
-    ["невозможная длина 4k+1", "abcde"],
-    ["невалидный UTF-8", "_w"],
-    ["знак + из обычного base64", "ab+c"],
-    ["знак = в конце", "YQ=="],
-  ])("возвращает undefined: %s", (_title, code) => {
+    ["foreign characters", "!!!"],
+    ["impossible length 4k+1", "abcde"],
+    ["invalid UTF-8", "_w"],
+    ["the + character from ordinary base64", "ab+c"],
+    ["the = character at the end", "YQ=="],
+  ])("returns undefined: %s", (_title, code) => {
     expect(decodeBase64Url(code)).toBeUndefined();
   });
 });

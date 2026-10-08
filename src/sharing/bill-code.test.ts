@@ -20,7 +20,7 @@ const anna = { id: "anna-uuid", name: "Аня" };
 const boris = { id: "boris-uuid", name: "Боря" };
 const vera = { id: "vera-uuid", name: "Вера" };
 
-/** Счёт без идентификаторов: по нему сравнивают счета «с точностью до id». */
+/** A bill without identifiers: used to compare bills "up to id". */
 function describeWithoutIds(bill: Bill): unknown {
   return {
     names: bill.participants.map((participant) => participant.name),
@@ -45,7 +45,7 @@ function codeFromJson(json: unknown): string {
 function readError(code: string): BillCodeError {
   const result = decodeBill(code);
   if (result.kind === "decoded")
-    throw new Error("Счёт не должен был открыться");
+    throw new Error("The bill should not have opened");
 
   return result.error;
 }
@@ -53,7 +53,7 @@ function readError(code: string): BillCodeError {
 function readDecodedBill(code: string): Bill {
   const result = decodeBill(code);
   if (result.kind === "failed") {
-    throw new Error(`Счёт не открылся: ${result.error.kind}`);
+    throw new Error(`The bill did not open: ${result.error.kind}`);
   }
 
   return result.bill;
@@ -65,12 +65,12 @@ function expectRoundTrip(bill: Bill): void {
   expect(describeWithoutIds(decoded)).toEqual(describeWithoutIds(bill));
 }
 
-describe("круговой тест encodeBill и decodeBill", () => {
-  it("пустой счёт", () => {
+describe("round trip of encodeBill and decodeBill", () => {
+  it("empty bill", () => {
     expectRoundTrip(EMPTY_BILL);
   });
 
-  it("участники и траты с частью получателей в нетривиальном порядке", () => {
+  it("participants and expenses with part of the recipients in a non-trivial order", () => {
     expectRoundTrip({
       participants: [anna, boris, vera],
       expenses: [
@@ -106,7 +106,7 @@ describe("круговой тест encodeBill и decodeBill", () => {
     "#1",
     "100%",
     "Анна  Мария",
-  ])("имя %j", (name) => {
+  ])("name %j", (name) => {
     const participant = { id: "someone", name };
     expectRoundTrip({
       participants: [participant],
@@ -121,7 +121,7 @@ describe("круговой тест encodeBill и decodeBill", () => {
     });
   });
 
-  it("наибольшая безопасная сумма", () => {
+  it("the largest safe amount", () => {
     expectRoundTrip({
       participants: [anna],
       expenses: [
@@ -136,9 +136,9 @@ describe("круговой тест encodeBill и decodeBill", () => {
   });
 
   it.each([
-    ["кириллица", "я"],
-    ["эмодзи", "😀"],
-  ])("имя предельной длины: %s", (_title, symbol) => {
+    ["Cyrillic", "я"],
+    ["emoji", "😀"],
+  ])("name of the maximum length: %s", (_title, symbol) => {
     const name = symbol.repeat(MAX_NAME_LENGTH);
 
     expectRoundTrip({
@@ -147,13 +147,13 @@ describe("круговой тест encodeBill и decodeBill", () => {
     });
   });
 
-  it("код состоит из версии и знаков base64url", () => {
+  it("the code consists of the version and base64url characters", () => {
     const code = encodeBill({ participants: [anna, boris], expenses: [] });
 
     expect(code).toMatch(/^1\.[A-Za-z0-9_-]*$/u);
   });
 
-  it("не меняет замороженный счёт", () => {
+  it("does not change a frozen bill", () => {
     const expense = {
       id: "dinner",
       payerId: anna.id,
@@ -168,7 +168,7 @@ describe("круговой тест encodeBill и decodeBill", () => {
     expect(() => encodeBill(bill)).not.toThrow();
   });
 
-  it("бросает ошибку, если трата ссылается на неизвестного участника", () => {
+  it("throws an error if an expense refers to an unknown participant", () => {
     const bill: Bill = {
       participants: [anna],
       expenses: [
@@ -185,7 +185,7 @@ describe("круговой тест encodeBill и decodeBill", () => {
   });
 });
 
-describe("идентификаторы разобранного счёта", () => {
+describe("identifiers of a parsed bill", () => {
   const bill: Bill = {
     participants: [anna, boris],
     expenses: [
@@ -204,7 +204,7 @@ describe("идентификаторы разобранного счёта", () 
     ],
   };
 
-  it("уникальны, а траты ссылаются на разобранных участников", () => {
+  it("are unique, and expenses refer to the parsed participants", () => {
     const decoded = readDecodedBill(encodeBill(bill));
 
     const participantIds = decoded.participants.map(({ id }) => id);
@@ -217,15 +217,15 @@ describe("идентификаторы разобранного счёта", () 
     expect(referencedIds.every((id) => participantIds.includes(id))).toBe(true);
   });
 
-  it("при повторном разборе одного кода одинаковы", () => {
+  it("are the same when one code is parsed again", () => {
     const code = encodeBill(bill);
 
     expect(decodeBill(code)).toEqual(decodeBill(code));
   });
 });
 
-describe("версия формата", () => {
-  it.each(["0", "2", "99"])("версия %s не поддерживается", (version) => {
+describe("format version", () => {
+  it.each(["0", "2", "99"])("version %s is not supported", (version) => {
     const error = readError(`${version}.${encodeBase64Url("[[],[]]")}`);
 
     expect(error).toEqual({
@@ -234,86 +234,86 @@ describe("версия формата", () => {
     });
   });
 
-  it("версию другого формата узнаёт, не разбирая нагрузку", () => {
+  it("recognizes a version of another format without parsing the payload", () => {
     expect(readError("2.!!!").kind).toBe("unsupportedVersion");
   });
 });
 
-describe("повреждённые коды", () => {
+describe("corrupted codes", () => {
   const notJson = `1.${encodeBase64Url("не JSON")}`;
   const invalidUtf8 = "1._w";
 
   it.each([
-    ["пустая строка", ""],
-    ["только версия", "1"],
-    ["нет нагрузки после точки", "1."],
-    ["нет версии", ".x"],
-    ["версия с буквой", "v1.x"],
-    ["чужие знаки в нагрузке", "1.!!!"],
-    ["процентное кодирование", "1.%D0"],
-    ["лишняя точка в нагрузке", "1.W1tdLFtdXQ.x"],
-    ["base64 не из JSON", notJson],
-    ["невалидный UTF-8", invalidUtf8],
-    ["слишком длинная ссылка", `1.${"A".repeat(MAX_BILL_CODE_LENGTH)}`],
-    ["огромная версия", `${"9".repeat(400)}.x`],
-    ["версия за пределом безопасных целых", "9007199254740993.x"],
+    ["empty string", ""],
+    ["only the version", "1"],
+    ["no payload after the dot", "1."],
+    ["no version", ".x"],
+    ["version with a letter", "v1.x"],
+    ["foreign characters in the payload", "1.!!!"],
+    ["percent encoding", "1.%D0"],
+    ["extra dot in the payload", "1.W1tdLFtdXQ.x"],
+    ["base64 that is not JSON", notJson],
+    ["invalid UTF-8", invalidUtf8],
+    ["link that is too long", `1.${"A".repeat(MAX_BILL_CODE_LENGTH)}`],
+    ["huge version", `${"9".repeat(400)}.x`],
+    ["version beyond the safe integers", "9007199254740993.x"],
   ])("%s — malformed", (_title, code) => {
     expect(readError(code).kind).toBe("malformed");
   });
 });
 
-describe("предел длины", () => {
-  it("проверяется раньше версии", () => {
+describe("length limit", () => {
+  it("is checked before the version", () => {
     const code = `2.${"A".repeat(MAX_BILL_CODE_LENGTH)}`;
 
     expect(readError(code).kind).toBe("malformed");
   });
 
-  it("не мешает коду ровно предельной длины дойти до проверки версии", () => {
+  it("does not stop a code of exactly the limit length from reaching the version check", () => {
     const code = `2.${"A".repeat(MAX_BILL_CODE_LENGTH - 2)}`;
 
     expect(readError(code).kind).toBe("unsupportedVersion");
   });
 });
 
-describe("неверный счёт", () => {
+describe("invalid bill", () => {
   const validExpense = [0, 100, [0]];
 
   it.each([
-    ["не массив", { names: [] }],
-    ["число", 5],
+    ["not an array", { names: [] }],
+    ["number", 5],
     ["null", null],
-    ["один элемент", [[]]],
-    ["лишний элемент", [["Аня"], [], []]],
-    ["имена не массив", ["Аня", []]],
-    ["траты не массив", [["Аня"], "траты"]],
-    ["имя не строка", [[1], []]],
-    ["имя длиннее предела", [["я".repeat(MAX_NAME_LENGTH + 1)], []]],
-    ["пустое имя из пробелов", [["  "], []]],
-    ["имена без учёта регистра", [["Аня", "аня"], []]],
-    ["трата не массив", [["Аня"], ["трата"]]],
-    ["кортеж траты из 2 элементов", [["Аня"], [[0, 100]]]],
-    ["кортеж траты из 4 элементов", [["Аня"], [[0, 100, [0], 1]]]],
-    ["плательщик −1", [["Аня"], [[-1, 100, [0]]]]],
-    ["плательщик 1.5", [["Аня"], [[1.5, 100, [0]]]]],
-    ["плательщик строкой", [["Аня"], [["0", 100, [0]]]]],
-    ["плательщик вне диапазона", [["Аня"], [[1, 100, [0]]]]],
-    ["сумма 0", [["Аня"], [[0, 0, [0]]]]],
-    ["сумма −1", [["Аня"], [[0, -1, [0]]]]],
-    ["сумма 1.5", [["Аня"], [[0, 1.5, [0]]]]],
-    ["сумма строкой", [["Аня"], [[0, "100", [0]]]]],
+    ["one element", [[]]],
+    ["extra element", [["Аня"], [], []]],
+    ["names are not an array", ["Аня", []]],
+    ["expenses are not an array", [["Аня"], "траты"]],
+    ["name is not a string", [[1], []]],
+    ["name longer than the limit", [["я".repeat(MAX_NAME_LENGTH + 1)], []]],
+    ["empty name made of spaces", [["  "], []]],
+    ["names ignoring case", [["Аня", "аня"], []]],
+    ["expense is not an array", [["Аня"], ["трата"]]],
+    ["expense tuple of 2 elements", [["Аня"], [[0, 100]]]],
+    ["expense tuple of 4 elements", [["Аня"], [[0, 100, [0], 1]]]],
+    ["payer −1", [["Аня"], [[-1, 100, [0]]]]],
+    ["payer 1.5", [["Аня"], [[1.5, 100, [0]]]]],
+    ["payer as a string", [["Аня"], [["0", 100, [0]]]]],
+    ["payer out of range", [["Аня"], [[1, 100, [0]]]]],
+    ["amount 0", [["Аня"], [[0, 0, [0]]]]],
+    ["amount −1", [["Аня"], [[0, -1, [0]]]]],
+    ["amount 1.5", [["Аня"], [[0, 1.5, [0]]]]],
+    ["amount as a string", [["Аня"], [[0, "100", [0]]]]],
     [
-      "сумма больше безопасного целого",
+      "amount above the safe integer",
       [["Аня"], [[0, Number.MAX_SAFE_INTEGER + 1, [0]]]],
     ],
-    ["получатели не массив", [["Аня"], [[0, 100, 0]]]],
-    ["пустые получатели", [["Аня"], [[0, 100, []]]]],
-    ["получатели с повтором", [["Аня"], [[0, 100, [0, 0]]]]],
-    ["получатель вне диапазона", [["Аня"], [[0, 100, [0, 1]]]]],
-    ["получатель не число", [["Аня"], [[0, 100, ["0"]]]]],
-    ["трата без участников", [[], [validExpense]]],
+    ["recipients are not an array", [["Аня"], [[0, 100, 0]]]],
+    ["empty recipients", [["Аня"], [[0, 100, []]]]],
+    ["recipients with a repeat", [["Аня"], [[0, 100, [0, 0]]]]],
+    ["recipient out of range", [["Аня"], [[0, 100, [0, 1]]]]],
+    ["recipient is not a number", [["Аня"], [[0, 100, ["0"]]]]],
+    ["expense without participants", [[], [validExpense]]],
     [
-      "сумма трат больше безопасного целого",
+      "total of expenses above the safe integer",
       [
         ["a", "b"],
         [
@@ -323,7 +323,7 @@ describe("неверный счёт", () => {
       ],
     ],
     [
-      "три суммы из подделанной ссылки",
+      "three amounts from a forged link",
       [
         ["a", "b", "c"],
         [
@@ -337,19 +337,19 @@ describe("неверный счёт", () => {
     expect(readError(codeFromJson(json)).kind).toBe("invalidBill");
   });
 
-  it("сумма 1e400 — invalidBill", () => {
+  it("amount 1e400 is invalidBill", () => {
     const code = codeFromText('[["Аня"],[[0,1e400,[0]]]]');
 
     expect(readError(code).kind).toBe("invalidBill");
   });
 
-  it("счёт без участников и трат — допустимый пустой счёт", () => {
+  it("a bill without participants and expenses is a valid empty bill", () => {
     expect(readDecodedBill(codeFromJson([[], []]))).toEqual(EMPTY_BILL);
   });
 });
 
-describe("устойчивость разбора", () => {
-  it("не бросает исключений на произвольных строках", () => {
+describe("parsing robustness", () => {
+  it("does not throw on arbitrary strings", () => {
     const codes = ["", "1.", "1.[[", "\u0000", "1.😀", "..", "1.====", "-1.x"];
 
     for (const code of codes) {
@@ -358,7 +358,7 @@ describe("устойчивость разбора", () => {
   });
 });
 
-/** Простой ГПСЧ (mulberry32) с фиксированным зерном: тест воспроизводим без зависимостей. */
+/** A simple PRNG (mulberry32) with a fixed seed: the test is reproducible without dependencies. */
 function createRandom(seed: number): () => number {
   let state = seed;
 
@@ -387,7 +387,7 @@ function createRandomBill(random: () => number): Bill {
       { length },
       () => NAME_ALPHABET[pick(NAME_ALPHABET.length)],
     );
-    // Номер в конце делает имена различными, не выходя за предел длины.
+    // The number at the end makes the names distinct without exceeding the length limit.
     const suffix = String(index);
     const name = [
       ...symbols.slice(0, MAX_NAME_LENGTH - suffix.length),
@@ -417,10 +417,10 @@ function createRandomBill(random: () => number): Bill {
   return { participants, expenses };
 }
 
-describe("свойства кодирования на псевдослучайных счетах", () => {
+describe("encoding properties on pseudo-random bills", () => {
   const ITERATIONS = 300;
 
-  it("круговой тест сохраняет счёт, а код подходит под шаблон", () => {
+  it("the round trip keeps the bill, and the code matches the pattern", () => {
     const random = createRandom(20_240_607);
 
     for (let iteration = 0; iteration < ITERATIONS; iteration += 1) {
@@ -430,7 +430,7 @@ describe("свойства кодирования на псевдослучай�
     }
   });
 
-  it("мутации валидного кода не бросают исключений и дают допустимый счёт или ошибку", () => {
+  it("mutations of a valid code do not throw and give a valid bill or an error", () => {
     const random = createRandom(777);
     const alphabet = Array.from("AZaz09-_.=+/ %я😀");
 

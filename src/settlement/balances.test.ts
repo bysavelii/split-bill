@@ -23,7 +23,7 @@ function sumBalances(bill: Bill): number {
 }
 
 describe("calculateBalances", () => {
-  it("без трат даёт нулевые балансы в порядке участников", () => {
+  it("gives zero balances in participant order without expenses", () => {
     expect(calculateBalances(createBill([]))).toEqual([
       { participantId: "anna", paid: 0, share: 0, amount: 0 },
       { participantId: "boris", paid: 0, share: 0, amount: 0 },
@@ -31,7 +31,7 @@ describe("calculateBalances", () => {
     ]);
   });
 
-  it("учитывает траты одного плательщика за всех", () => {
+  it("accounts for the expenses of one payer for everyone", () => {
     const bill = createBill([
       {
         id: "1",
@@ -48,7 +48,7 @@ describe("calculateBalances", () => {
     ]);
   });
 
-  it("учитывает трату не на всех участников", () => {
+  it("accounts for an expense that is not for all participants", () => {
     const bill = createBill([
       {
         id: "1",
@@ -65,7 +65,7 @@ describe("calculateBalances", () => {
     ]);
   });
 
-  it("отдаёт лишнюю копейку первому получателю", () => {
+  it("gives the extra kopeck to the first recipient", () => {
     const bill = createBill([
       {
         id: "1",
@@ -80,7 +80,7 @@ describe("calculateBalances", () => {
     ]);
   });
 
-  it("даёт нулевую сумму балансов при любых тратах", () => {
+  it("gives a zero sum of balances for any expenses", () => {
     const bill = createBill([
       {
         id: "1",
@@ -105,7 +105,7 @@ describe("calculateBalances", () => {
     expect(sumBalances(bill)).toBe(0);
   });
 
-  describe("на счёте с несколькими тратами", () => {
+  describe("on a bill with several expenses", () => {
     const bill = createBill([
       {
         id: "1",
@@ -127,7 +127,7 @@ describe("calculateBalances", () => {
       },
     ]);
 
-    it("сумма долей равна общей сумме трат", () => {
+    it("the sum of shares equals the total of expenses", () => {
       const totalShare = calculateBalances(bill).reduce(
         (total, balance) => total + balance.share,
         0,
@@ -136,13 +136,13 @@ describe("calculateBalances", () => {
       expect(totalShare).toBe(calculateTotalSpent(bill));
     });
 
-    it("заплачено у плательщика равно сумме его трат", () => {
+    it("the amount paid by a payer equals the sum of their expenses", () => {
       const annaBalance = calculateBalances(bill)[0];
 
       expect(annaBalance?.paid).toBe(10_001 + 777);
     });
 
-    it("итог каждого участника равен заплаченному минус доля", () => {
+    it("each participant's outcome equals paid minus share", () => {
       for (const balance of calculateBalances(bill)) {
         expect(balance.amount).toBe(balance.paid - balance.share);
       }

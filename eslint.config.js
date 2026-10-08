@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import prettierConfig from "eslint-config-prettier";
+import solid from "eslint-plugin-solid/configs/typescript";
 import tseslint from "typescript-eslint";
 
 const DOM_GLOBALS = [
@@ -16,7 +17,7 @@ const DOM_GLOBALS = [
 ];
 
 export default tseslint.config(
-  { ignores: ["dist", "coverage", ".cyberzavod", ".claude"] },
+  { ignores: ["dist", "coverage", ".astro", ".cyberzavod", ".claude"] },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
   {
@@ -32,14 +33,18 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
-    // Предметная логика и кодирование ссылки не знают о DOM и интерфейсе.
+    files: ["src/**/*.tsx"],
+    ...solid,
+  },
+  {
+    // Domain logic and link encoding know nothing about the DOM and the interface.
     files: ["src/bill/**", "src/settlement/**", "src/sharing/**"],
     rules: {
       "no-restricted-globals": [
         "error",
         ...DOM_GLOBALS.map((name) => ({
           name,
-          message: `Код без DOM не должен обращаться к ${name}`,
+          message: `Code without the DOM must not use ${name}`,
         })),
       ],
       "no-restricted-imports": [
@@ -48,7 +53,11 @@ export default tseslint.config(
           patterns: [
             {
               group: ["**/ui/**"],
-              message: "Код без DOM не должен импортировать интерфейс",
+              message: "Code without the DOM must not import the interface",
+            },
+            {
+              group: ["solid-js*", "astro*"],
+              message: "Code without the DOM must not import the frameworks",
             },
           ],
         },

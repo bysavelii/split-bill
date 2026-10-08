@@ -14,7 +14,7 @@ const PERSON_FORMS: PluralForms = {
 
 const BALANCED_TEXT = "в расчёте";
 const PLUS_SIGN = "+";
-/** Настоящий минус (U+2212), а не дефис: он той же ширины, что и плюс. */
+/** A real minus (U+2212), not a hyphen: it has the same width as the plus. */
 const MINUS_SIGN = "\u2212";
 
 export const SHARE_NOTE =
@@ -31,17 +31,17 @@ export interface BalanceOutcome {
 
 export interface TransferCountFacts {
   readonly transferCount: number;
-  /** Сколько человек отдают или получают деньги. */
+  /** How many people give or receive money. */
   readonly settlingCount: number;
   readonly isMinimal: boolean;
 }
 
-/** Число переводов со словом в нужной форме: «1 перевод», «2 перевода», «5 переводов». */
+/** The number of transfers with the word in the right form: "1 перевод", "2 перевода", "5 переводов". */
 export function formatTransferCount(count: number): string {
   return formatCount(count, TRANSFER_FORMS);
 }
 
-/** Одна фраза о том, почему переводов именно столько. */
+/** One phrase about why there are exactly this many transfers. */
 export function describeTransferCount(facts: TransferCountFacts): string {
   const transfers = formatTransferCount(facts.transferCount);
   const settlers = formatCount(facts.settlingCount, PERSON_FORMS);
@@ -58,7 +58,7 @@ export function describeTransferCount(facts: TransferCountFacts): string {
   return `${transfers} — меньше не получится: деньги отдают или получают ${settlers}, а когда их нельзя разбить на группы, которые рассчитываются между собой, переводов нужно на один меньше, чем людей.`;
 }
 
-/** Что получается у участника в итоге: цвет и знак в интерфейсе выбирают по `kind`. */
+/** What the participant ends up with: the interface picks the color and sign by `kind`. */
 export function describeBalanceOutcome(amount: Kopecks): BalanceOutcome {
   const absoluteAmount = formatRubles(Math.abs(amount));
   if (amount > 0) {

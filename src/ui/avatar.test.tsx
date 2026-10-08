@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { cleanup, render } from "@solidjs/testing-library";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   AVATAR_TONE_COUNT,
-  createAvatar,
+  Avatar,
   pickAvatarTone,
   readInitial,
 } from "./avatar";
+
+afterEach(cleanup);
 
 const TWENTY_NAMES = [
   "Аня",
@@ -31,11 +34,11 @@ const TWENTY_NAMES = [
 ];
 
 describe("pickAvatarTone", () => {
-  it("для одного имени всегда возвращает один и тот же оттенок", () => {
+  it("always returns the same tone for one name", () => {
     expect(pickAvatarTone("Аня")).toBe(pickAvatarTone("Аня"));
   });
 
-  it("возвращает целое число в пределах палитры", () => {
+  it("returns an integer within the palette", () => {
     for (const name of [...TWENTY_NAMES, "", "<b>", "👩‍👩‍👧"]) {
       const tone = pickAvatarTone(name);
 
@@ -45,7 +48,7 @@ describe("pickAvatarTone", () => {
     }
   });
 
-  it("разные имена компании получают разные оттенки", () => {
+  it("different names in a group get different tones", () => {
     const tones = new Set(TWENTY_NAMES.map(pickAvatarTone));
 
     expect(tones.size).toBeGreaterThanOrEqual(4);
@@ -57,18 +60,20 @@ describe("readInitial", () => {
     ["аня", "А"],
     ["  Боря", "Б"],
     ["👩‍👩‍👧 Ок", "👩‍👩‍👧"],
-  ])("из «%s» берёт «%s»", (name, expected) => {
+  ])('from "%s" takes "%s"', (name, expected) => {
     expect(readInitial(name)).toBe(expected);
   });
 
-  it("для пустого имени возвращает пустую строку", () => {
+  it("returns an empty string for an empty name", () => {
     expect(readInitial("   ")).toBe("");
   });
 });
 
-describe("createAvatar", () => {
-  it("скрыт от диктора, показывает первую букву и несёт класс оттенка", () => {
-    const avatar = createAvatar("боря");
+describe("Avatar", () => {
+  it("is hidden from the screen reader, shows the first letter and carries the tone class", () => {
+    const avatar = render(() => <Avatar name="боря" />).container
+      .firstElementChild;
+    if (avatar === null) throw new Error("Avatar not rendered");
 
     const toneNumber = pickAvatarTone("боря") + 1;
     expect(avatar.getAttribute("aria-hidden")).toBe("true");

@@ -74,7 +74,7 @@ function planForBill(
 }
 
 describe("calculateTransfers", () => {
-  it("не создаёт переводов при нулевых балансах", () => {
+  it("creates no transfers for zero balances", () => {
     expect(calculateTransfers(createBalances([0, 0, 0]))).toEqual({
       transfers: [],
       isMinimal: true,
@@ -82,7 +82,7 @@ describe("calculateTransfers", () => {
     });
   });
 
-  it("не создаёт переводов без балансов", () => {
+  it("creates no transfers without balances", () => {
     expect(calculateTransfers([])).toEqual({
       transfers: [],
       isMinimal: true,
@@ -90,7 +90,7 @@ describe("calculateTransfers", () => {
     });
   });
 
-  it("собирает переводы двух должников одному кредитору", () => {
+  it("collects the transfers of two debtors to one creditor", () => {
     const { transfers } = calculateTransfers(
       createBalances([60_000, -30_000, -30_000]),
     );
@@ -101,7 +101,7 @@ describe("calculateTransfers", () => {
     ]);
   });
 
-  it("делит долг одного должника между кредиторами", () => {
+  it("splits one debtor's debt between creditors", () => {
     const { transfers } = calculateTransfers(createBalances([-100, 30, 70]));
 
     expect(transfers).toEqual([
@@ -110,7 +110,7 @@ describe("calculateTransfers", () => {
     ]);
   });
 
-  it("находит меньше переводов, чем жадный проход", () => {
+  it("finds fewer transfers than a greedy pass", () => {
     const plan = calculateTransfers(createBalances([300, 200, -200, -300]));
 
     expect(plan).toEqual({
@@ -123,7 +123,7 @@ describe("calculateTransfers", () => {
     });
   });
 
-  it("разбивает на несколько групп и считает по группам", () => {
+  it("splits into several groups and counts per group", () => {
     const { transfers } = calculateTransfers(
       createBalances([100, -100, 50, -20, -30]),
     );
@@ -142,11 +142,11 @@ describe("calculateTransfers", () => {
     [[1, -1, 0, 3, -3]],
     [[300, 200, -200, -300]],
     [[100, -100, 50, -20, -30]],
-  ])("после применения переводов балансы %j обнуляются", (amounts) => {
+  ])("after applying the transfers the balances %j zero out", (amounts) => {
     expectSettled(createBalances(amounts));
   });
 
-  it("не учитывает участников с нулевым балансом", () => {
+  it("ignores participants with a zero balance", () => {
     const { transfers, settlingCount } = calculateTransfers(
       createBalances([0, 5, 0, -5]),
     );
@@ -155,7 +155,7 @@ describe("calculateTransfers", () => {
     expect(settlingCount).toBe(2);
   });
 
-  it("на пределе точного поиска даёт перевод на каждую пару", () => {
+  it("at the limit of the exact search gives a transfer for each pair", () => {
     const balances = createBalances(createPairs(EXACT_SEARCH_LIMIT / 2));
 
     const plan = calculateTransfers(balances);
@@ -165,7 +165,7 @@ describe("calculateTransfers", () => {
     expectSettled(balances);
   });
 
-  it("за пределом точного поиска обнуляет балансы, но минимум не гарантирует", () => {
+  it("beyond the limit of the exact search zeroes the balances but does not guarantee the minimum", () => {
     const amounts = [
       EXACT_SEARCH_LIMIT,
       ...Array<number>(EXACT_SEARCH_LIMIT).fill(-1),
@@ -179,13 +179,13 @@ describe("calculateTransfers", () => {
     expectSettled(balances);
   });
 
-  it("при повторном вызове даёт равный результат", () => {
+  it("gives an equal result on a repeated call", () => {
     const balances = createBalances([300, 200, -200, -300, 0, 10, -10]);
 
     expect(calculateTransfers(balances)).toEqual(calculateTransfers(balances));
   });
 
-  it("сортирует переводы по должнику, затем по получателю", () => {
+  it("sorts transfers by debtor, then by recipient", () => {
     const { transfers } = calculateTransfers(
       createBalances([40, 60, -70, -30]),
     );
@@ -199,7 +199,7 @@ describe("calculateTransfers", () => {
     ]);
   });
 
-  it("не меняет входные данные", () => {
+  it("does not change the input", () => {
     const balances = createBalances([300, 200, -200, -300]);
     const snapshot = structuredClone(balances);
     for (const balance of balances) Object.freeze(balance);
@@ -211,13 +211,13 @@ describe("calculateTransfers", () => {
   });
 
   it.each([[[100, -90]], [[5]], [[1, 1]]])(
-    "бросает RangeError, когда сумма балансов %j не нулевая",
+    "throws RangeError when the sum of balances %j is not zero",
     (amounts) => {
       expect(() => calculateTransfers(createBalances(amounts))).toThrow(
         RangeError,
       );
       expect(() => calculateTransfers(createBalances(amounts))).toThrow(
-        "Сумма балансов должна быть нулевой",
+        "The sum of balances must be zero",
       );
     },
   );
@@ -227,10 +227,10 @@ const PROPERTY_SEED = 20_240_607;
 const PROPERTY_CASE_COUNT = 400;
 const MIN_SETTLING_COUNT = 2;
 const MAX_SETTLING_COUNT = 8;
-/** Малый разброс балансов, чтобы группы с нулевой суммой встречались часто. */
+/** A small spread of balances so that groups with a zero sum occur often. */
 const MAX_BALANCE_MAGNITUDE = 6;
 
-/** Детерминированный генератор mulberry32: числа в [0, 1). */
+/** The deterministic mulberry32 generator: numbers in [0, 1). */
 function createRandom(seed: number): () => number {
   let state = seed;
 
@@ -251,7 +251,7 @@ function pickNonZeroBalance(random: () => number): number {
   return random() < 0.5 ? -magnitude : magnitude;
 }
 
-/** Набор ненулевых балансов с нулевой суммой: последний добирает остаток. */
+/** A set of non-zero balances with a zero sum: the last one takes up the remainder. */
 function generateSettlingAmounts(random: () => number): number[] {
   for (;;) {
     const size = pickInteger(random, MIN_SETTLING_COUNT, MAX_SETTLING_COUNT);
@@ -267,9 +267,9 @@ function generateSettlingAmounts(random: () => number): number[] {
 }
 
 /**
- * Эталон, независимый от реализации: наибольшее число групп с нулевой суммой,
- * на которые делится набор. Перебирает группу, в которую входит первый
- * участник, и рекурсивно делит остаток.
+ * A reference independent of the implementation: the largest number of groups with a zero sum
+ * the set divides into. It enumerates the group that contains the first
+ * participant and recursively splits the remainder.
  */
 function countMaxZeroSumGroups(amounts: readonly number[]): number {
   const [first, ...others] = amounts;
@@ -293,8 +293,8 @@ function countMaxZeroSumGroups(amounts: readonly number[]): number {
   return bestCount;
 }
 
-describe("минимальность числа переводов", () => {
-  it("совпадает с «людей минус наибольшее число групп с нулевой суммой»", () => {
+describe("minimality of the number of transfers", () => {
+  it('matches "people minus the largest number of groups with a zero sum"', () => {
     const random = createRandom(PROPERTY_SEED);
     let multiGroupCaseCount = 0;
 
@@ -317,10 +317,10 @@ describe("минимальность числа переводов", () => {
   });
 });
 
-describe("переводы по счёту", () => {
+describe("transfers for a bill", () => {
   const everyone = ["a", "b", "c"];
 
-  it("один платил за всех: два перевода по трети", () => {
+  it("one paid for everyone: two transfers of a third", () => {
     const { plan } = planForBill([
       { id: "1", payerId: "a", amount: 90_000, beneficiaryIds: everyone },
     ]);
@@ -331,7 +331,7 @@ describe("переводы по счёту", () => {
     ]);
   });
 
-  it("взаимные долги на равные суммы взаимно гасятся", () => {
+  it("mutual debts of equal amounts cancel out", () => {
     const { balances, plan } = planForBill(
       [
         { id: "1", payerId: "a", amount: 50_000, beneficiaryIds: ["b"] },
@@ -348,7 +348,7 @@ describe("переводы по счёту", () => {
     expect(balances.map((balance) => balance.amount)).toEqual([0, 0]);
   });
 
-  it("взаимные долги на разные суммы дают один перевод на разницу", () => {
+  it("mutual debts of different amounts give one transfer for the difference", () => {
     const { plan } = planForBill(
       [
         { id: "1", payerId: "a", amount: 70_000, beneficiaryIds: ["b"] },
@@ -362,7 +362,7 @@ describe("переводы по счёту", () => {
     ]);
   });
 
-  it("100 рублей на троих: переводы по 33,33 и сходятся с балансом плательщика", () => {
+  it("100 rubles for three: transfers of 33.33 that match the payer's balance", () => {
     const { balances, plan } = planForBill([
       { id: "1", payerId: "a", amount: 10_000, beneficiaryIds: everyone },
     ]);
@@ -381,7 +381,7 @@ describe("переводы по счёту", () => {
     expect(received).toBe(balances[0]?.amount);
   });
 
-  it("0,01 рубля на двоих: перевод на копейку, если платил второй", () => {
+  it("0.01 ruble for two: a transfer of one kopeck if the second paid", () => {
     const { plan } = planForBill(
       [{ id: "1", payerId: "b", amount: 1, beneficiaryIds: ["a", "b"] }],
       participants.slice(0, 2),
@@ -390,7 +390,7 @@ describe("переводы по счёту", () => {
     expect(plan.transfers).toEqual([{ fromId: "a", toId: "b", amount: 1 }]);
   });
 
-  it("0,01 рубля на двоих: все в расчёте, если платил первый", () => {
+  it("0.01 ruble for two: everyone is settled if the first paid", () => {
     const { plan } = planForBill(
       [{ id: "1", payerId: "a", amount: 1, beneficiaryIds: ["a", "b"] }],
       participants.slice(0, 2),
@@ -399,7 +399,7 @@ describe("переводы по счёту", () => {
     expect(plan.transfers).toEqual([]);
   });
 
-  it("смешанный счёт с копейками обнуляется", () => {
+  it("a mixed bill with kopecks zeroes out", () => {
     const { balances, plan } = planForBill([
       { id: "1", payerId: "a", amount: 10_001, beneficiaryIds: everyone },
       { id: "2", payerId: "c", amount: 777, beneficiaryIds: ["b", "c"] },
@@ -412,8 +412,8 @@ describe("переводы по счёту", () => {
   });
 });
 
-describe("граничные случаи счёта", () => {
-  it("один участник, платящий за себя: переводов нет", () => {
+describe("boundary cases of a bill", () => {
+  it("one participant paying for themselves: no transfers", () => {
     const { balances, plan } = planForBill(
       [{ id: "1", payerId: "a", amount: 12_345, beneficiaryIds: ["a"] }],
       [{ id: "a", name: "А" }],
@@ -423,7 +423,7 @@ describe("граничные случаи счёта", () => {
     expect(plan).toEqual({ transfers: [], isMinimal: true, settlingCount: 0 });
   });
 
-  it("траты порядка миллиарда рублей считаются до копейки", () => {
+  it("expenses of the order of a billion rubles are counted to the kopeck", () => {
     const billionRubles = 100_000_000_000;
     const { balances, plan } = planForBill([
       {
@@ -447,7 +447,7 @@ describe("граничные случаи счёта", () => {
     ).toBe(true);
   });
 
-  it("крупные балансы в точном поиске обнуляются", () => {
+  it("large balances in the exact search zero out", () => {
     const balances = createBalances([
       10_000_000_000_001, 5_000_000_000_000, -5_000_000_000_001,
       -10_000_000_000_000,
@@ -457,7 +457,7 @@ describe("граничные случаи счёта", () => {
     expectSettled(balances);
   });
 
-  it("участник без трат остаётся с нулевым балансом и не участвует в переводах", () => {
+  it("a participant without expenses keeps a zero balance and takes no part in transfers", () => {
     const { plan } = planForBill([
       { id: "1", payerId: "a", amount: 1_000, beneficiaryIds: ["a", "b"] },
     ]);

@@ -1,4 +1,4 @@
-/** Формы слова для чисел вроде 1, 2 и 5. */
+/** Word forms for numbers like 1, 2 and 5. */
 export interface PluralForms {
   readonly one: string;
   readonly few: string;
@@ -7,7 +7,7 @@ export interface PluralForms {
 
 const pluralRules = new Intl.PluralRules("ru-RU");
 
-/** Число со словом в нужной форме: «2 перевода», «5 человек». */
+/** A number with the word in the right form: "2 перевода", "5 человек". */
 export function formatCount(count: number, forms: PluralForms): string {
   return `${String(count)} ${selectForm(count, forms)}`;
 }

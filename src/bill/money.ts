@@ -1,4 +1,4 @@
-/** Сумма в копейках: всегда целое число. */
+/** An amount in kopecks: always an integer. */
 export type Kopecks = number;
 
 const KOPECKS_PER_RUBLE = 100;
@@ -13,14 +13,14 @@ const rublesFormat = new Intl.NumberFormat("ru-RU", {
   minimumFractionDigits: 2,
 });
 
-/** Разбирает введённые рубли в копейки; `undefined` для нуля и некорректного ввода. */
+/** Parses entered rubles into kopecks; `undefined` for zero and invalid input. */
 export function parseRubles(text: string): Kopecks | undefined {
   const compactText = text.replace(WHITESPACE, "");
   const match = RUBLES_PATTERN.exec(compactText);
   if (match === null) return undefined;
 
   const [, rubles = "", fraction = ""] = match;
-  // Копейки собираются строкой, чтобы не умножать дробное число и не терять точность.
+  // Kopecks are assembled as a string so as not to multiply a fractional number and lose precision.
   const kopecksText = rubles + fraction.padEnd(MAX_KOPECK_DIGITS, "0");
   const amount = Number(kopecksText);
   if (!Number.isSafeInteger(amount) || amount === 0) return undefined;

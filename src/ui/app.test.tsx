@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import { fireEvent, render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_NAME_LENGTH, type Bill } from "../bill/bill";
 import { encodeBase64Url } from "../sharing/base64-url";
 import { decodeBill, encodeBill } from "../sharing/bill-code";
-import { mountApp } from "./app";
+import { App } from "./app";
 
 let root: HTMLElement;
 let unmountApp: () => void;
@@ -19,11 +20,11 @@ function findInput(labelText: string): HTMLInputElement {
   const input = label?.htmlFor
     ? root.querySelector<HTMLInputElement>(`#${label.htmlFor}`)
     : null;
-  if (input === null) throw new Error(`Не найдено поле «${labelText}»`);
+  if (input === null) throw new Error(`Field "${labelText}" not found`);
   return input;
 }
 
-/** Кнопка по доступному имени: `aria-label`, а если его нет — видимый текст. */
+/** A button by its accessible name: `aria-label`, or the visible text if there is none. */
 function findButton(name: string): HTMLButtonElement {
   const button = [...root.querySelectorAll("button")].find(
     (candidate) =>
@@ -31,17 +32,17 @@ function findButton(name: string): HTMLButtonElement {
         candidate.getAttribute("aria-label") ?? candidate.textContent,
       ) === name,
   );
-  if (button === undefined) throw new Error(`Не найдена кнопка «${name}»`);
+  if (button === undefined) throw new Error(`Button "${name}" not found`);
   return button;
 }
 
 function addParticipant(name: string): void {
-  findInput("Имя").value = name;
+  fireEvent.input(findInput("Имя"), { target: { value: name } });
   findButton("Добавить").click();
 }
 
 function addExpense(amount: string): void {
-  findInput("Сколько, ₽").value = amount;
+  fireEvent.input(findInput("Сколько, ₽"), { target: { value: amount } });
   findButton("Добавить трату").click();
 }
 
@@ -51,8 +52,8 @@ function selectPayer(name: string): void {
     (candidate) => candidate.text === name,
   );
   if (select === null || option === undefined)
-    throw new Error(`Не найден плательщик ${name}`);
-  select.value = option.value;
+    throw new Error(`Payer ${name} not found`);
+  fireEvent.change(select, { target: { value: option.value } });
 }
 
 function addParticipants(...names: string[]): void {
@@ -72,8 +73,8 @@ function uncheckBeneficiary(name: string): void {
   );
   const checkbox = label?.querySelector("input");
   if (checkbox === null || checkbox === undefined)
-    throw new Error(`Не найден флажок ${name}`);
-  checkbox.checked = false;
+    throw new Error(`Checkbox ${name} not found`);
+  if (checkbox.checked) fireEvent.click(checkbox);
 }
 
 function readTexts(selector: string): string[] {
@@ -86,7 +87,7 @@ function findSection(title: string): HTMLElement {
   const section = [...root.querySelectorAll("section")].find(
     (candidate) => candidate.querySelector("h2")?.textContent === title,
   );
-  if (section === undefined) throw new Error(`Не найдена секция «${title}»`);
+  if (section === undefined) throw new Error(`Section "${title}" not found`);
   return section;
 }
 
@@ -145,7 +146,7 @@ function readSummarySection(): HTMLElement {
 function findAnnouncement(): HTMLElement {
   const announcement =
     readSummarySection().querySelector<HTMLElement>("[aria-live]");
-  if (announcement === null) throw new Error("Не найдена область объявлений");
+  if (announcement === null) throw new Error("Announcement area not found");
   return announcement;
 }
 
@@ -192,14 +193,14 @@ function readParagraphs(): string[] {
 const EMPTY_SUMMARY =
   "Добавьте траты — здесь появится, кто кому сколько должен";
 
-/** Монтирует приложение заново на текущем адресе, сняв обработчики прошлого. */
+/** Mounts the app again at the current address, removing the handlers of the previous one. */
 function remountApp(): void {
   unmountApp();
   document.body.innerHTML = '<main id="app"></main>';
   const app = document.getElementById("app");
-  if (app === null) throw new Error("Не найден #app");
+  if (app === null) throw new Error("#app not found");
   root = app;
-  unmountApp = mountApp(root);
+  unmountApp = render(() => <App />, { container: root }).unmount;
 }
 
 beforeEach(() => {
@@ -214,8 +215,8 @@ afterEach(() => {
   Reflect.deleteProperty(navigator, "clipboard");
 });
 
-describe("сценарий деления счёта", () => {
-  it("показывает, кто кому переводит, и возвращает подсказку после удаления траты", () => {
+describe("the bill splitting scenario", () => {
+  it("shows who transfers to whom and brings the hint back after an expense is removed", () => {
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
 
     addParticipant("Аня");
@@ -235,14 +236,14 @@ describe("сценарий деления счёта", () => {
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
 
-  it("сообщает, что переводы не нужны, когда все в расчёте", () => {
+  it("says no transfers are needed when everyone is settled", () => {
     addParticipant("Аня");
     addExpense("100");
 
     expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
   });
 
-  it("перечисляет получателей траты через запятую", () => {
+  it("lists the recipients of an expense separated by commas", () => {
     addParticipant("Аня");
     addParticipant("Боря");
     addParticipant("Вера");
@@ -252,7 +253,7 @@ describe("сценарий деления счёта", () => {
     expect(readExpenses()).toEqual(["Аня — 100,00 ₽, за: Аня, Боря"]);
   });
 
-  it("после добавления траты очищает сумму, отмечает всех и оставляет плательщика", () => {
+  it("after adding an expense clears the amount, checks everyone and keeps the payer", () => {
     addParticipant("Аня");
     addParticipant("Боря");
     selectPayer("Боря");
@@ -271,7 +272,7 @@ describe("сценарий деления счёта", () => {
     expect(select?.selectedOptions[0]?.text).toBe("Боря");
   });
 
-  it("при смене списка участников снова отмечает всех", () => {
+  it("checks everyone again when the list of participants changes", () => {
     addParticipant("Аня");
     addParticipant("Боря");
     uncheckBeneficiary("Аня");
@@ -288,7 +289,7 @@ describe("сценарий деления счёта", () => {
     ]);
   });
 
-  it("пока нет участников, показывает подсказку вместо формы траты", () => {
+  it("while there are no participants, shows a hint instead of the expense form", () => {
     const form = root.querySelectorAll("form")[1];
     const notice = [...root.querySelectorAll("p")].find(
       (paragraph) => paragraph.textContent === "Сначала добавьте участников",
@@ -304,12 +305,12 @@ describe("сценарий деления счёта", () => {
   });
 });
 
-describe("шапка", () => {
+describe("header", () => {
   function readOverview(): string[] {
     return readTexts(".page-header .overview-item");
   }
 
-  it("показывает название и подзаголовок", () => {
+  it("shows the title and the subtitle", () => {
     expect(root.querySelector(".page-header h1")?.textContent).toBe(
       "Делим счёт",
     );
@@ -318,7 +319,7 @@ describe("шапка", () => {
     );
   });
 
-  it("у пустого счёта показывает нули", () => {
+  it("shows zeros for an empty bill", () => {
     expect(readOverview()).toEqual([
       "0 участников",
       "0 трат",
@@ -326,7 +327,7 @@ describe("шапка", () => {
     ]);
   });
 
-  it("считает участников, траты и всего потраченного", () => {
+  it("counts participants, expenses and the total spent", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
 
@@ -338,8 +339,8 @@ describe("шапка", () => {
   });
 });
 
-describe("кнопки удаления", () => {
-  it("это значки без видимого текста, а имя им даёт aria-label", () => {
+describe("delete buttons", () => {
+  it("are icons without visible text, and aria-label gives them the name", () => {
     addParticipants("Аня", "Боря");
     addExpenseBy("Аня", "900");
 
@@ -359,7 +360,7 @@ describe("кнопки удаления", () => {
   });
 });
 
-describe("аватары", () => {
+describe("avatars", () => {
   function readToneClasses(container: Element | null): string[] {
     const avatars = container?.querySelectorAll(".avatar") ?? [];
 
@@ -368,7 +369,7 @@ describe("аватары", () => {
     );
   }
 
-  it("у одного человека везде один и тот же оттенок", () => {
+  it("one person has the same tone everywhere", () => {
     addParticipants("Аня", "Боря");
     selectPayer("Боря");
     addExpense("100");
@@ -386,7 +387,7 @@ describe("аватары", () => {
   });
 });
 
-describe("подсказки пустых состояний", () => {
+describe("empty state hints", () => {
   function readHints(): string[] {
     const hints = [
       ...findSection("Участники").querySelectorAll<HTMLElement>(".empty-state"),
@@ -403,27 +404,27 @@ describe("подсказки пустых состояний", () => {
   const NO_EXPENSES_HINT =
     "Трат пока нет. Добавьте первую: кто платил, сколько и за кого";
 
-  it("без участников зовёт добавить людей и показывает остальные подсказки", () => {
+  it("without participants asks to add people and shows the other hints", () => {
     expect(readHints()).toEqual([
       NO_PARTICIPANTS_HINT,
       "Сначала добавьте участников",
     ]);
   });
 
-  it("с участниками без трат зовёт добавить первую трату", () => {
+  it("with participants and no expenses asks to add the first expense", () => {
     addParticipant("Аня");
 
     expect(readHints()).toEqual([NO_EXPENSES_HINT]);
   });
 
-  it("после первой траты подсказка про траты исчезает", () => {
+  it("the expenses hint disappears after the first expense", () => {
     addParticipant("Аня");
     addExpense("100");
 
     expect(readHints()).toEqual([]);
   });
 
-  it("у каждой подсказки есть значок, скрытый от диктора", () => {
+  it("every hint has an icon hidden from the screen reader", () => {
     for (const hint of root.querySelectorAll(".empty-state")) {
       expect(hint.querySelector("svg")?.getAttribute("aria-hidden")).toBe(
         "true",
@@ -432,11 +433,11 @@ describe("подсказки пустых состояний", () => {
   });
 });
 
-describe("объяснение итога", () => {
+describe("explanation of the summary", () => {
   const ROUNDING_TEXT =
     "Когда трата не делится поровну до копейки, у тех, кто выше в списке участников, доля на копейку больше.";
 
-  it("для одного платившего за всех показывает разбор", () => {
+  it("shows the breakdown for one person who paid for everyone", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
 
@@ -451,7 +452,7 @@ describe("объяснение итога", () => {
     ).toBe("Как посчитано");
   });
 
-  it("различает «получает» и «отдаёт» классом, знаком и словом", () => {
+  it('tells "получает" from "отдаёт" by class, sign and word', () => {
     addParticipants("Аня", "Боря", "Вера");
     uncheckBeneficiary("Вера");
     addExpenseBy("Аня", "100");
@@ -470,7 +471,7 @@ describe("объяснение итога", () => {
     ]);
   });
 
-  it("причину числа переводов прячет внутрь «Как посчитано»", () => {
+  it('hides the reason for the number of transfers inside "Как посчитано"', () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
 
@@ -483,7 +484,7 @@ describe("объяснение итога", () => {
     ).toHaveLength(1);
   });
 
-  it("объясняет, почему переводов именно столько", () => {
+  it("explains why there are exactly this many transfers", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
 
@@ -494,7 +495,7 @@ describe("объяснение итога", () => {
     ).toBe(true);
   });
 
-  it("100 рублей на троих: два перевода по 33,33 ₽", () => {
+  it("100 rubles for three: two transfers of 33.33 ₽", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "100");
 
@@ -504,7 +505,7 @@ describe("объяснение итога", () => {
     ]);
   });
 
-  it("взаимные долги 700 и 300 ₽: один перевод на 400 ₽", () => {
+  it("mutual debts of 700 and 300 ₽: one transfer of 400 ₽", () => {
     addParticipants("Аня", "Боря");
     uncheckBeneficiary("Аня");
     addExpenseBy("Аня", "700");
@@ -514,7 +515,7 @@ describe("объяснение итога", () => {
     expect(readSummary()).toEqual(["Боря → Аня: 400,00 ₽"]);
   });
 
-  it("при взаимных долгах показывает «в расчёте» и не объясняет число переводов", () => {
+  it('with mutual debts shows "в расчёте" and does not explain the number of transfers', () => {
     addParticipants("Аня", "Боря");
     uncheckBeneficiary("Аня");
     addExpenseBy("Аня", "500");
@@ -529,7 +530,7 @@ describe("объяснение итога", () => {
     ]);
   });
 
-  it("объясняет, что переводов меньше обычного, когда компания делится на группы", () => {
+  it("explains that there are fewer transfers than usual when the group splits into subgroups", () => {
     addParticipants("Аня", "Боря", "Вера", "Гена");
     uncheckBeneficiary("Аня");
     uncheckBeneficiary("Вера");
@@ -551,14 +552,14 @@ describe("объяснение итога", () => {
     ).toBe(true);
   });
 
-  it("поясняет про копейки, когда трата не делится поровну", () => {
+  it("explains about kopecks when an expense does not divide evenly", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "100");
 
     expect(readNotes()).toContain(ROUNDING_TEXT);
   });
 
-  it("не поясняет про копейки, когда все траты делятся поровну", () => {
+  it("does not explain about kopecks when all expenses divide evenly", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
 
@@ -566,7 +567,7 @@ describe("объяснение итога", () => {
     expect(readNotes()).toHaveLength(1);
   });
 
-  it("один участник с тратой на себя: в расчёте, переводов нет", () => {
+  it("one participant with an expense on themselves: settled, no transfers", () => {
     addParticipants("Аня");
     addExpenseBy("Аня", "500");
 
@@ -574,7 +575,7 @@ describe("объяснение итога", () => {
     expect(readBreakdown()).toEqual(["Аня | 500,00 ₽ | 500,00 ₽ | в расчёте"]);
   });
 
-  it("участник без трат попадает в разбор строкой «в расчёте»", () => {
+  it('a participant without expenses gets into the breakdown with the row "в расчёте"', () => {
     addParticipants("Аня", "Боря", "Вера");
     uncheckBeneficiary("Вера");
     addExpenseBy("Аня", "100");
@@ -586,14 +587,14 @@ describe("объяснение итога", () => {
     ]);
   });
 
-  it("очень большая сумма показывается без потери копеек", () => {
+  it("a very large amount is shown without losing kopecks", () => {
     addParticipants("Аня", "Боря");
     addExpenseBy("Аня", "1000000000");
 
     expect(readSummary()).toEqual(["Боря → Аня: 500 000 000,00 ₽"]);
   });
 
-  it("без трат не показывает «Как посчитано»", () => {
+  it('without expenses does not show "Как посчитано"', () => {
     addParticipants("Аня", "Боря");
 
     expect(readSummarySection().querySelector("details")).toBeNull();
@@ -601,8 +602,8 @@ describe("объяснение итога", () => {
   });
 });
 
-describe("карточки переводов", () => {
-  it("над карточками пишет, сколько переводов нужно", () => {
+describe("transfer cards", () => {
+  it("above the cards says how many transfers are needed", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
 
@@ -616,14 +617,14 @@ describe("карточки переводов", () => {
     );
   });
 
-  it("когда все в расчёте, строки про число переводов нет", () => {
+  it("when everyone is settled, there is no line about the number of transfers", () => {
     addParticipant("Аня");
     addExpense("100");
 
     expect(readSummarySection().querySelector(".transfers-count")).toBeNull();
   });
 
-  it("у участников карточки те же оттенки аватаров, что в чипах", () => {
+  it("participants on the cards have the same avatar tones as in the chips", () => {
     addParticipants("Аня", "Боря");
     addExpenseBy("Боря", "100");
 
@@ -638,7 +639,7 @@ describe("карточки переводов", () => {
     expect(cardTones).toEqual(chipTones);
   });
 
-  it("подсказка в итоге видна без трат и когда все в расчёте", () => {
+  it("the hint in the summary is visible without expenses and when everyone is settled", () => {
     const summaryHint = (): string =>
       normalize(
         readSummarySection().querySelector(".empty-state")?.textContent,
@@ -653,8 +654,8 @@ describe("карточки переводов", () => {
   });
 });
 
-describe("подписи кнопок удаления трат", () => {
-  it("различают траты одного плательщика, и нажатие удаляет именно выбранную", () => {
+describe("captions of the expense delete buttons", () => {
+  it("tell apart expenses of one payer, and a click removes exactly the chosen one", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
     addExpense("300");
@@ -670,8 +671,8 @@ describe("подписи кнопок удаления трат", () => {
   });
 });
 
-describe("доступность итога", () => {
-  /** Записи об изменениях области объявлений с момента вызова. */
+describe("accessibility of the summary", () => {
+  /** Records of changes to the announcement area since the call. */
   function observeAnnouncement(): MutationObserver {
     const observer = new MutationObserver(() => undefined);
     observer.observe(findAnnouncement(), {
@@ -683,7 +684,7 @@ describe("доступность итога", () => {
     return observer;
   }
 
-  it("живая область одна: скрытая, вежливая и читается целиком", () => {
+  it("there is one live area: hidden, polite and read as a whole", () => {
     const liveAreas = readSummarySection().querySelectorAll("[aria-live]");
 
     expect(readSummarySection().hasAttribute("aria-live")).toBe(false);
@@ -693,18 +694,18 @@ describe("доступность итога", () => {
     expect(liveAreas[0]?.classList.contains("visually-hidden")).toBe(true);
   });
 
-  it("без трат сообщает, что трат пока нет", () => {
+  it("without expenses says there are no expenses yet", () => {
     expect(readAnnouncement()).toBe("Итог: трат пока нет");
   });
 
-  it("объявляет число переводов, а не сами переводы и пояснения", () => {
+  it("announces the number of transfers, not the transfers themselves and the explanations", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
 
     expect(readAnnouncement()).toBe("Итог: 2 перевода");
   });
 
-  it("при взаимных долгах объявляет один перевод", () => {
+  it("announces one transfer for mutual debts", () => {
     addParticipants("Аня", "Боря");
     uncheckBeneficiary("Аня");
     addExpenseBy("Аня", "700");
@@ -714,14 +715,14 @@ describe("доступность итога", () => {
     expect(readAnnouncement()).toBe("Итог: 1 перевод");
   });
 
-  it("когда переводы не нужны, объявляет, что все в расчёте", () => {
+  it("when no transfers are needed, announces that everyone is settled", () => {
     addParticipants("Аня");
     addExpenseBy("Аня", "500");
 
     expect(readAnnouncement()).toBe("Итог: все в расчёте, переводы не нужны");
   });
 
-  it("после удаления последней траты снова объявляет, что трат нет", () => {
+  it("after the last expense is removed announces again that there are no expenses", () => {
     addParticipants("Аня");
     addExpenseBy("Аня", "500");
 
@@ -730,7 +731,7 @@ describe("доступность итога", () => {
     expect(readAnnouncement()).toBe("Итог: трат пока нет");
   });
 
-  it("не переписывает область, когда добавляют участников без трат", () => {
+  it("does not rewrite the area when participants are added without expenses", () => {
     addParticipants("Аня");
     const observer = observeAnnouncement();
 
@@ -740,7 +741,7 @@ describe("доступность итога", () => {
     observer.disconnect();
   });
 
-  it("не переписывает область, когда число переводов не изменилось", () => {
+  it("does not rewrite the area when the number of transfers did not change", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
     const observer = observeAnnouncement();
@@ -753,7 +754,7 @@ describe("доступность итога", () => {
     observer.disconnect();
   });
 
-  it("не вкладывает живые области друг в друга", () => {
+  it("does not nest live areas inside each other", () => {
     addParticipants("Аня", "Боря", "Вера");
     addExpenseBy("Аня", "900");
 
@@ -761,15 +762,15 @@ describe("доступность итога", () => {
   });
 });
 
-describe("ошибки ввода", () => {
-  it("отклоняет пустое имя", () => {
+describe("input errors", () => {
+  it("rejects an empty name", () => {
     addParticipant("   ");
 
     expect(readParticipantsMessage()).toBe("Введите имя");
     expect(readParticipantNames()).toEqual([]);
   });
 
-  it("отклоняет повтор имени", () => {
+  it("rejects a repeated name", () => {
     addParticipant("Аня");
     addParticipant("аня");
 
@@ -777,7 +778,7 @@ describe("ошибки ввода", () => {
     expect(readParticipantNames()).toEqual(["Аня"]);
   });
 
-  it("отклоняет слишком длинное имя", () => {
+  it("rejects a name that is too long", () => {
     addParticipant("я".repeat(MAX_NAME_LENGTH + 1));
 
     expect(readParticipantsMessage()).toBe(
@@ -786,7 +787,7 @@ describe("ошибки ввода", () => {
     expect(readParticipantNames()).toEqual([]);
   });
 
-  it("отклоняет трату, после которой итог не поместится в расчёт", () => {
+  it("rejects an expense after which the total will not fit the calculation", () => {
     addParticipant("Аня");
     addExpense("90071992547407,69");
     const expenses = readExpenses();
@@ -801,7 +802,7 @@ describe("ошибки ввода", () => {
     expect(location.hash).toBe(address);
   });
 
-  it.each(["", "0", "abc", "1,234"])("отклоняет сумму %j", (amount) => {
+  it.each(["", "0", "abc", "1,234"])("rejects the amount %j", (amount) => {
     addParticipant("Аня");
     addExpense(amount);
 
@@ -811,7 +812,7 @@ describe("ошибки ввода", () => {
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
 
-  it("отклоняет трату без отмеченных получателей", () => {
+  it("rejects an expense without checked recipients", () => {
     addParticipant("Аня");
     uncheckBeneficiary("Аня");
     addExpense("100");
@@ -820,7 +821,7 @@ describe("ошибки ввода", () => {
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
 
-  it("не удаляет участника, который есть в тратах", () => {
+  it("does not remove a participant who is in the expenses", () => {
     addParticipant("Аня");
     addParticipant("Боря");
     addExpense("100");
@@ -833,7 +834,7 @@ describe("ошибки ввода", () => {
     expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
   });
 
-  it("удаляет участника без трат", () => {
+  it("removes a participant without expenses", () => {
     addParticipant("Аня");
 
     findButton("Удалить участника Аня").click();
@@ -841,7 +842,7 @@ describe("ошибки ввода", () => {
     expect(readParticipantNames()).toEqual([]);
   });
 
-  it("сохраняет выбранного плательщика после добавления участника", () => {
+  it("keeps the chosen payer after a participant is added", () => {
     addParticipants("Аня", "Боря");
     selectPayer("Боря");
 
@@ -850,7 +851,7 @@ describe("ошибки ввода", () => {
     expect(root.querySelector("select")?.selectedOptions[0]?.text).toBe("Боря");
   });
 
-  it("после удаления выбранного плательщика выбирает оставшегося участника", () => {
+  it("after the chosen payer is removed picks the remaining participant", () => {
     addParticipants("Аня", "Боря");
     selectPayer("Боря");
 
@@ -861,7 +862,7 @@ describe("ошибки ввода", () => {
     expect(readExpenses()).toEqual(["Аня — 100,00 ₽, за всех"]);
   });
 
-  it("после ошибки суммы и исправления добавляет трату и убирает сообщение", () => {
+  it("after an amount error and a correction adds the expense and removes the message", () => {
     addParticipant("Аня");
     addExpense("abc");
     expect(readExpensesMessage()).not.toBe("");
@@ -872,7 +873,7 @@ describe("ошибки ввода", () => {
     expect(readExpenses()).toEqual(["Аня — 250,00 ₽, за всех"]);
   });
 
-  it("при превышении предела суммы оставляет введённое в форме", () => {
+  it("when the amount limit is exceeded keeps what was entered in the form", () => {
     addParticipant("Аня");
     addExpense("90071992547407,69");
     uncheckBeneficiary("Аня");
@@ -886,8 +887,8 @@ describe("ошибки ввода", () => {
   });
 });
 
-describe("экранирование", () => {
-  it("показывает разметку в имени как обычный текст", () => {
+describe("escaping", () => {
+  it("shows markup in a name as plain text", () => {
     addParticipant("<b>Ли</b>");
 
     expect(readParticipantNames()).toEqual(["<b>Ли</b>"]);
@@ -895,7 +896,7 @@ describe("экранирование", () => {
   });
 });
 
-describe("ссылка на счёт", () => {
+describe("bill link", () => {
   const anna = { id: "anna", name: "Аня" };
   const boris = { id: "boris", name: "Боря" };
   const billWithDinner: Bill = {
@@ -960,7 +961,7 @@ describe("ссылка на счёт", () => {
     });
   }
 
-  /** Буфер, ответ которого тест выдаёт сам, когда ему удобно. */
+  /** A clipboard whose answer the test delivers itself, when it suits. */
   function createDeferredWrite(): {
     readonly writeText: (text: string) => Promise<void>;
     readonly settled: Promise<void>;
@@ -972,7 +973,7 @@ describe("ссылка на счёт", () => {
     const pending = new Promise<void>((resolvePending, rejectPending) => {
       resolve = resolvePending;
       reject = () => {
-        rejectPending(new Error("Нет доступа"));
+        rejectPending(new Error("Access denied"));
       };
     });
     const settled = pending.then(
@@ -983,12 +984,12 @@ describe("ссылка на счёт", () => {
     return { writeText: () => pending, settled, resolve, reject };
   }
 
-  describe("адрес", () => {
-    it("пока ничего не менялось, не трогает адрес", () => {
+  describe("address", () => {
+    it("does not touch the address while nothing has changed", () => {
       expect(location.hash).toBe("");
     });
 
-    it("после добавления участника содержит код текущего счёта", () => {
+    it("after a participant is added contains the code of the current bill", () => {
       addParticipant("Аня");
       addParticipant("Боря");
 
@@ -996,7 +997,7 @@ describe("ссылка на счёт", () => {
       expect(location.hash).toBe(`#${encodeBill(expectedBill)}`);
     });
 
-    it("после добавления траты содержит код счёта с тратой", () => {
+    it("after an expense is added contains the code of the bill with the expense", () => {
       addParticipant("Аня");
       addParticipant("Боря");
       selectPayer("Аня");
@@ -1005,7 +1006,7 @@ describe("ссылка на счёт", () => {
       expect(location.hash).toBe(`#${encodeBill(billWithDinner)}`);
     });
 
-    it("после удаления последнего участника записывает код пустого счёта", () => {
+    it("after the last participant is removed writes the code of an empty bill", () => {
       addParticipant("Аня");
       findButton("Удалить участника Аня").click();
 
@@ -1014,7 +1015,7 @@ describe("ссылка на счёт", () => {
       );
     });
 
-    it("не добавляет записей в историю", () => {
+    it("adds no entries to the history", () => {
       const lengthBefore = history.length;
 
       addParticipant("Аня");
@@ -1024,7 +1025,7 @@ describe("ссылка на счёт", () => {
       expect(history.length).toBe(lengthBefore);
     });
 
-    it("сохраняет путь и query", () => {
+    it("keeps the path and the query", () => {
       openAddress("/split-bill/?from=chat");
 
       addParticipant("Аня");
@@ -1035,8 +1036,8 @@ describe("ссылка на счёт", () => {
     });
   });
 
-  describe("открытие по ссылке", () => {
-    it("новое приложение на том же адресе показывает тот же счёт", () => {
+  describe("opening by a link", () => {
+    it("a new app at the same address shows the same bill", () => {
       addParticipant("Аня");
       addParticipant("Боря");
       selectPayer("Аня");
@@ -1060,7 +1061,7 @@ describe("ссылка на счёт", () => {
       expect(readNotice()?.hidden).toBe(true);
     });
 
-    it("после открытия новые участники не пересекаются с разобранными", () => {
+    it("after opening, new participants do not clash with the parsed ones", () => {
       openCode(encodeBill(billWithDinner));
 
       addParticipant("Вера");
@@ -1071,7 +1072,7 @@ describe("ссылка на счёт", () => {
       expect(readBreakdown()).toHaveLength(3);
     });
 
-    it("открытие счёта само адрес не пишет", () => {
+    it("opening a bill does not write the address itself", () => {
       const code = encodeBill(billWithDinner);
       const pageUrl = `/split-bill/?x=1#${code}`;
 
@@ -1083,10 +1084,14 @@ describe("ссылка на счёт", () => {
     it.each([
       ["#мусор", "мусор", MALFORMED_NOTICE],
       ["#1.!!!", "1.!!!", MALFORMED_NOTICE],
-      ["счёт с повторяющимися именами", invalidBillCode(), MALFORMED_NOTICE],
-      ["другая версия", `2.${encodeBase64Url("[[],[]]")}`, UNSUPPORTED_NOTICE],
+      ["bill with repeated names", invalidBillCode(), MALFORMED_NOTICE],
+      [
+        "another version",
+        `2.${encodeBase64Url("[[],[]]")}`,
+        UNSUPPORTED_NOTICE,
+      ],
     ])(
-      "при ссылке «%s» показывает сообщение и пустой счёт",
+      'for the link "%s" shows the message and an empty bill',
       (_title, code, text) => {
         openCode(code);
 
@@ -1098,7 +1103,7 @@ describe("ссылка на счёт", () => {
       },
     );
 
-    it("подделанная ссылка с огромным итогом не роняет страницу", () => {
+    it("a forged link with a huge total does not crash the page", () => {
       const forgedCode =
         "1.W1siYSIsImIiLCJjIl0sW1sxLDkwMDcxOTkyNTQ3NDA3NjksWzJdXSxbMCw5MDA3MTk5MjU0NzQwNDYxLFsxXV0sWzIsOTAwNzE5OTI1NDc0MDIxMCxbMV1dXV0";
 
@@ -1113,13 +1118,13 @@ describe("ссылка на счёт", () => {
       expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
     });
 
-    it("не меняет адрес, пока счёт не менялся", () => {
+    it("does not change the address while the bill has not changed", () => {
       openCode("1.!!!");
 
       expect(location.hash).toBe("#1.!!!");
     });
 
-    it("после первого изменения заменяет адрес валидным кодом, формы работают", () => {
+    it("after the first change replaces the address with a valid code, the forms work", () => {
       openCode("1.!!!");
 
       addParticipant("Аня");
@@ -1129,7 +1134,7 @@ describe("ссылка на счёт", () => {
       expect(location.hash).toBe(`#${encodeBill(expectedBill)}`);
     });
 
-    it("«Закрыть» прячет сообщение и ничего больше не меняет", () => {
+    it('"Закрыть" hides the message and changes nothing else', () => {
       openCode("1.!!!");
 
       findButton("Закрыть сообщение").click();
@@ -1138,7 +1143,7 @@ describe("ссылка на счёт", () => {
       expect(location.hash).toBe("#1.!!!");
     });
 
-    it("делит секции на левую и правую колонки", () => {
+    it("divides the sections into the left and right columns", () => {
       const columns = [...(root.querySelector(".layout")?.children ?? [])];
       const readTitles = (column: Element | undefined): string[] =>
         [...(column?.querySelectorAll("h2") ?? [])].map(
@@ -1153,7 +1158,7 @@ describe("ссылка на счёт", () => {
       expect(readTitles(columns[1])).toEqual(["Итог", "Поделиться"]);
     });
 
-    it("сообщение стоит между шапкой и секциями", () => {
+    it("the message stands between the header and the sections", () => {
       const children = [...root.children].map((child) => child.tagName);
 
       expect(children).toEqual(["HEADER", "DIV", "DIV"]);
@@ -1162,15 +1167,15 @@ describe("ссылка на счёт", () => {
     });
   });
 
-  describe("изменение адреса на открытой странице", () => {
-    it("показывает счёт из нового валидного кода", () => {
+  describe("address change on an open page", () => {
+    it("shows the bill from a new valid code", () => {
       changeAddressOnPage(encodeBill(billWithDinner));
 
       expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
       expect(readSummary()).toEqual(["Боря → Аня: 450,00 ₽"]);
     });
 
-    it("обновляет сводку для диктора по новому счёту", () => {
+    it("updates the screen reader overview for the new bill", () => {
       const lunch: Bill = {
         participants: [anna, boris],
         expenses: [
@@ -1198,7 +1203,7 @@ describe("ссылка на счёт", () => {
       expect(readAnnouncement()).toBe("Итог: 1 перевод");
     });
 
-    it("при битом коде сводка для диктора сообщает, что трат нет", () => {
+    it("with a broken code the screen reader overview says there are no expenses", () => {
       openCode(encodeBill(billWithDinner));
       expect(readAnnouncement()).toBe("Итог: 1 перевод");
 
@@ -1207,7 +1212,7 @@ describe("ссылка на счёт", () => {
       expect(readAnnouncement()).toBe("Итог: трат пока нет");
     });
 
-    it("при битом коде показывает сообщение и пустой счёт", () => {
+    it("with a broken code shows the message and an empty bill", () => {
       addParticipant("Аня");
 
       changeAddressOnPage("1.!!!");
@@ -1216,7 +1221,7 @@ describe("ссылка на счёт", () => {
       expect(readParticipantNames()).toEqual([]);
     });
 
-    it("при валидном коде прячет прежнее сообщение", () => {
+    it("with a valid code hides the previous message", () => {
       openCode("1.!!!");
 
       changeAddressOnPage(encodeBill(billWithDinner));
@@ -1224,7 +1229,7 @@ describe("ссылка на счёт", () => {
       expect(readNotice()?.hidden).toBe(true);
     });
 
-    it("при пустом фрагменте показывает пустой счёт", () => {
+    it("with an empty fragment shows an empty bill", () => {
       openCode(encodeBill(billWithDinner));
 
       changeAddressOnPage("");
@@ -1232,7 +1237,7 @@ describe("ссылка на счёт", () => {
       expect(readParticipantNames()).toEqual([]);
     });
 
-    it("не пишет адрес, а значит не вызывает цикла", () => {
+    it("does not write the address, so it causes no loop", () => {
       const code = encodeBill(billWithDinner);
 
       changeAddressOnPage(code);
@@ -1240,7 +1245,7 @@ describe("ссылка на счёт", () => {
       expect(location.hash).toBe(`#${code}`);
     });
 
-    it("после снятия приложения перестаёт реагировать на адрес", () => {
+    it("after the app is removed stops reacting to the address", () => {
       unmountApp();
 
       changeAddressOnPage(encodeBill(billWithDinner));
@@ -1249,8 +1254,8 @@ describe("ссылка на счёт", () => {
     });
   });
 
-  describe("«Поделиться»", () => {
-    it("копирует ссылку текущего счёта и сообщает об этом", async () => {
+  describe('"Поделиться"', () => {
+    it("copies the link of the current bill and says so", async () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
       writeText.mockResolvedValue(undefined);
       installClipboard(writeText);
@@ -1270,7 +1275,7 @@ describe("ссылка на счёт", () => {
       expect(isLinkFieldHidden()).toBe(true);
     });
 
-    it("сообщение об успехе не стилизовано как ошибка", async () => {
+    it("the success message is not styled as an error", async () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
       writeText.mockResolvedValue(undefined);
       installClipboard(writeText);
@@ -1289,7 +1294,7 @@ describe("ссылка на счёт", () => {
       expect(message?.classList.contains("message-success")).toBe(false);
     });
 
-    it("ответ буфера после изменения счёта не показывает «Ссылка скопирована»", async () => {
+    it('the clipboard answer after the bill changed does not show "Ссылка скопирована"', async () => {
       const clipboard = createDeferredWrite();
       installClipboard(clipboard.writeText);
       addParticipant("Аня");
@@ -1303,7 +1308,7 @@ describe("ссылка на счёт", () => {
       expect(isLinkFieldHidden()).toBe(true);
     });
 
-    it("отказ буфера после изменения счёта не показывает поле со старой ссылкой", async () => {
+    it("the clipboard refusal after the bill changed does not show the field with the old link", async () => {
       const clipboard = createDeferredWrite();
       installClipboard(clipboard.writeText);
       addParticipant("Аня");
@@ -1317,7 +1322,7 @@ describe("ссылка на счёт", () => {
       expect(isLinkFieldHidden()).toBe(true);
     });
 
-    it("без буфера показывает поле со ссылкой", () => {
+    it("without a clipboard shows the field with the link", () => {
       addParticipant("Аня");
 
       findButton("Поделиться").click();
@@ -1328,9 +1333,9 @@ describe("ссылка на счёт", () => {
       expect(readLinkField().value).toBe(location.href);
     });
 
-    it("при отказе буфера показывает поле со ссылкой", async () => {
+    it("when the clipboard refuses shows the field with the link", async () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
-      writeText.mockRejectedValue(new Error("Нет доступа"));
+      writeText.mockRejectedValue(new Error("Access denied"));
       installClipboard(writeText);
       addParticipant("Аня");
 
@@ -1343,10 +1348,10 @@ describe("ссылка на счёт", () => {
       expect(readLinkField().value).toBe(location.href);
     });
 
-    it("отказ буфера после успеха без изменения счёта не оставляет сообщение зелёным", async () => {
+    it("a clipboard refusal after success without a bill change does not leave the message green", async () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
       writeText.mockResolvedValueOnce(undefined);
-      writeText.mockRejectedValueOnce(new Error("Нет доступа"));
+      writeText.mockRejectedValueOnce(new Error("Access denied"));
       installClipboard(writeText);
       addParticipant("Аня");
       findButton("Поделиться").click();
@@ -1363,7 +1368,7 @@ describe("ссылка на счёт", () => {
       expect(message?.classList.contains("message-success")).toBe(false);
     });
 
-    it("ссылка пустого счёта открывается как пустой счёт", () => {
+    it("the link of an empty bill opens as an empty bill", () => {
       findButton("Поделиться").click();
 
       const link = new URL(readLinkField().value);
@@ -1374,7 +1379,7 @@ describe("ссылка на счёт", () => {
       });
     });
 
-    it("при следующей отрисовке сбрасывает сообщение и прячет поле", () => {
+    it("on the next render resets the message and hides the field", () => {
       findButton("Поделиться").click();
 
       addParticipant("Аня");
@@ -1382,6 +1387,37 @@ describe("ссылка на счёт", () => {
       expect(readShareMessage()).toBe("");
       expect(isLinkFieldHidden()).toBe(true);
     });
+  });
+});
+
+describe("share links from the previous version", () => {
+  // A literal code, not produced by `encodeBill`: links already shared in the wild must keep opening,
+  // so this code must stay the same whatever the app is built with.
+  const LITERAL_CODE =
+    "1.W1si0JDQvdGPIiwi0JHQvtGA0Y8iLCLQktC10YDQsCIsItCT0L7RiNCwIl0sW1swLDQ4MDAwMCxbMCwxLDIsM11dLFsxLDEyNTA1MCxbMCwxLDJdXSxbMiw2MDAwMCxbMiwzXV1dXQ";
+
+  it("opens a bill by a literal code at the published address", () => {
+    history.replaceState(null, "", `/split-bill/#${LITERAL_CODE}`);
+
+    remountApp();
+
+    expect(readParticipantNames()).toEqual(["Аня", "Боря", "Вера", "Гоша"]);
+    expect(readExpenses()).toEqual([
+      "Аня — 4 800,00 ₽, за всех",
+      "Боря — 1 250,50 ₽, за: Аня, Боря, Вера",
+      "Вера — 600,00 ₽, за: Вера, Гоша",
+    ]);
+    expect(readSummary()).toEqual([
+      "Боря → Аня: 366,33 ₽",
+      "Вера → Аня: 1 316,83 ₽",
+      "Гоша → Аня: 1 500,00 ₽",
+    ]);
+    expect(readTexts(".page-header .overview-item")).toEqual([
+      "4 участника",
+      "3 траты",
+      "потрачено 6 650,50 ₽",
+    ]);
+    expect(root.querySelector<HTMLElement>(".notice")?.hidden).toBe(true);
   });
 });
 

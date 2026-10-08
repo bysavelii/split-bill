@@ -1,16 +1,16 @@
 import type { Bill } from "../bill/bill";
 import type { Kopecks } from "../bill/money";
 
-/** Делит сумму на равные доли; лишние копейки достаются первым по порядку. */
+/** Splits an amount into equal shares; the extra kopecks go to the first ones in order. */
 export function splitAmount(amount: Kopecks, count: number): Kopecks[] {
   if (!Number.isInteger(count) || count < 1) {
     throw new RangeError(
-      `Число долей должно быть целым и не меньше 1, получено: ${String(count)}`,
+      `The number of shares must be an integer and at least 1, got: ${String(count)}`,
     );
   }
   if (!Number.isInteger(amount) || amount <= 0) {
     throw new RangeError(
-      `Сумма должна быть положительным целым числом копеек, получено: ${String(amount)}`,
+      `The amount must be a positive integer number of kopecks, got: ${String(amount)}`,
     );
   }
 
@@ -22,7 +22,7 @@ export function splitAmount(amount: Kopecks, count: number): Kopecks[] {
   );
 }
 
-/** Есть трата, которая не делится поровну до копейки. */
+/** There is an expense that does not divide evenly to the kopeck. */
 export function hasUnevenSplit(bill: Bill): boolean {
   return bill.expenses.some(
     (expense) => expense.amount % expense.beneficiaryIds.length !== 0,

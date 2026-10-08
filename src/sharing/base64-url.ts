@@ -1,9 +1,9 @@
 const BASE64_URL_ALPHABET = /^[A-Za-z0-9_-]*$/u;
 const BASE64_BLOCK_LENGTH = 4;
-/** Остаток 1 невозможен: один знак base64 несёт всего 6 бит, меньше целого байта. */
+/** A remainder of 1 is impossible: one base64 character carries only 6 bits, less than a whole byte. */
 const IMPOSSIBLE_REMAINDER = 1;
 
-/** UTF-8, затем base64url без `=`: результат состоит только из знаков `A-Za-z0-9_-`. */
+/** UTF-8, then base64url without `=`: the result consists only of the characters `A-Za-z0-9_-`. */
 export function encodeBase64Url(text: string): string {
   const bytes = new TextEncoder().encode(text);
   const base64 = btoa(bytesToBinaryString(bytes));
@@ -11,7 +11,7 @@ export function encodeBase64Url(text: string): string {
   return base64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-/** `undefined`, если знаки чужие, длина невозможна или байты не образуют UTF-8. */
+/** `undefined` if the characters are foreign, the length is impossible or the bytes are not UTF-8. */
 export function decodeBase64Url(code: string): string | undefined {
   if (!BASE64_URL_ALPHABET.test(code)) return undefined;
   if (code.length % BASE64_BLOCK_LENGTH === IMPOSSIBLE_REMAINDER) {
@@ -43,7 +43,7 @@ function decodeBytes(code: string): Uint8Array | undefined {
 }
 
 function decodeUtf8(bytes: Uint8Array): string | undefined {
-  // ignoreBOM: true оставляет метку порядка байтов в тексте, а не съедает её.
+  // ignoreBOM: true keeps the byte order mark in the text instead of swallowing it.
   const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
   try {
