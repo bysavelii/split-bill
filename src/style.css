@@ -56,6 +56,9 @@
   --column-width-wide: 72rem;
   /* Предел ширины имени в таблице «Как посчитано»: длиннее — переносится. */
   --breakdown-name-width: 7rem;
+  /* Зазор слева от числовой колонки таблицы: на телефоне уже, чтобы суммы не сливались и таблица помещалась. */
+  --breakdown-column-gap: var(--space-5);
+  --breakdown-column-gap-compact: var(--space-3);
   /* Точка-разделитель между пунктами обзора стоит левее пункта на отступ и на поправку к ширине самой точки. */
   --overview-separator-offset: calc(-1 * var(--space-2) - 0.15em);
   --button-hover-brightness: 0.92;
@@ -535,7 +538,7 @@ input[readonly] {
 
 .breakdown th,
 .breakdown td {
-  padding: var(--space-2) var(--space-1);
+  padding: var(--space-2) 0;
   text-align: right;
   /* Без этого перенос шёл бы посреди слова и после пробела перед «₽». */
   overflow-wrap: normal;
@@ -547,15 +550,16 @@ input[readonly] {
   text-align: left;
 }
 
+/* Числа выровнены по правому краю, поэтому зазор между колонками задаёт левый отступ ячейки. */
+.breakdown th:not(:first-child),
+.breakdown td {
+  padding-left: var(--breakdown-column-gap);
+}
+
 /* Длинное имя переносится, а не раздвигает таблицу; короткое не ломается посреди слова. */
 .breakdown tbody th {
   max-width: var(--breakdown-name-width);
   overflow-wrap: anywhere;
-}
-
-.breakdown th:last-child,
-.breakdown td:last-child {
-  padding-right: 0;
 }
 
 .breakdown thead th {
@@ -689,7 +693,7 @@ input[readonly] {
 /* На телефоне поля уже, чтобы таблица «Как посчитано» помещалась без прокрутки при 360 px. */
 @media (max-width: 480px) {
   main {
-    padding-inline: var(--space-3);
+    padding-inline: var(--space-2);
   }
 
   section {
@@ -700,9 +704,9 @@ input[readonly] {
     font-size: var(--font-size-small);
   }
 
-  .breakdown th,
+  .breakdown th:not(:first-child),
   .breakdown td {
-    padding-inline: var(--space-1);
+    padding-left: var(--breakdown-column-gap-compact);
   }
 }
 
