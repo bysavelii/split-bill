@@ -1,4 +1,4 @@
-# Split the bill (Делим счёт)
+# Split the bill
 
 A web app for people who travel in a group or go to a cafe together: enter the expenses, and the app calculates who owes whom and how much, and reduces the settlements to the minimal number of transfers. It is convenient to open on both a phone and a computer.
 
@@ -11,11 +11,11 @@ The interface is in English and in Russian, and a bill is kept in US dollars or 
 
 <img src="docs/screenshot-desktop.png" alt="The app Split the bill on a computer: participants and expenses on the left, the summary with three transfers and the Share button on the right">
 
-The Russian version, «Делим счёт»:
+The Russian version:
 
-<img src="docs/screenshot-ru.png" width="390" alt="The app «Делим счёт» on a phone: an example bill with the participants Аня, Боря, Вера and Гоша and the expense form">
+<img src="docs/screenshot-ru.png" width="390" alt="The Russian page on a phone: the example bill with four participants and the expense form">
 
-<img src="docs/screenshot-desktop-ru.png" alt="The app «Делим счёт» on a computer: participants and expenses on the left, the summary with three transfers and the «Поделиться» button on the right">
+<img src="docs/screenshot-desktop-ru.png" alt="The Russian page on a computer: participants and expenses on the left, the summary with three transfers and the share button on the right">
 
 ## Features
 

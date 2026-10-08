@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Интерфейс на ванильном TypeScript и DOM, без UI-фреймворка",
-    "description": "Три формы и три списка: фреймворк не окупается, страница легче и проще"
+    "title": "The interface is in vanilla TypeScript and the DOM, without a UI framework",
+    "description": "Three forms and three lists: a framework does not pay off, the page is lighter and simpler"
   }
 }

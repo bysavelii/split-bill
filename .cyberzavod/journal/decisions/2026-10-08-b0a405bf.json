@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Цвет аватара — FNV-1a от имени по модулю 8; палитра только в CSS, в коде лишь число тонов",
-    "description": "Цвет стабилен для имени и одинаков во всех местах, где показан человек"
+    "title": "The avatar color is FNV-1a of the name modulo 8; the palette lives only in CSS, the code has only the number of tones",
+    "description": "The color is stable for a name and the same in every place where a person is shown"
   }
 }

@@ -3,9 +3,18 @@ import { fireEvent, render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_BILL, MAX_NAME_LENGTH, type Bill } from "../bill/bill";
 import { encodeBase64Url } from "../sharing/base64-url";
-import type { Locale } from "../i18n/locales";
+import { DICTIONARIES } from "../i18n/dictionaries";
+import type { PluralForms } from "../i18n/format";
+import { LOCALE_DEFINITIONS, type Locale } from "../i18n/locales";
 import { decodeBill, encodeBill } from "../sharing/bill-code";
 import { App } from "./app";
+
+const RU = DICTIONARIES.ru;
+// dictionaries.test.ts guarantees that the Russian sets have all four forms.
+const RU_PARTICIPANTS = RU.plurals.participants as Required<PluralForms>;
+const RU_EXPENSES = RU.plurals.expenses as Required<PluralForms>;
+const RU_TRANSFERS = RU.plurals.transfers as Required<PluralForms>;
+const RU_PEOPLE = RU.plurals.people as Required<PluralForms>;
 
 let root: HTMLElement;
 let unmountApp: () => void;
@@ -38,13 +47,17 @@ function findButton(name: string): HTMLButtonElement {
 }
 
 function addParticipant(name: string): void {
-  fireEvent.input(findInput("Имя"), { target: { value: name } });
-  findButton("Добавить").click();
+  fireEvent.input(findInput(RU.participants.nameLabel), {
+    target: { value: name },
+  });
+  findButton(RU.participants.addButton).click();
 }
 
 function addExpense(amount: string): void {
-  fireEvent.input(findInput("Сколько, ₽"), { target: { value: amount } });
-  findButton("Добавить трату").click();
+  fireEvent.input(findInput(RU.expenses.amountLabel("₽")), {
+    target: { value: amount },
+  });
+  findButton(RU.expenses.addButton).click();
 }
 
 /** The payer select of the expense form; the currency select in the header is a different one. */
@@ -122,7 +135,7 @@ function readParticipantNames(): string[] {
   return readTexts(".participant-name");
 }
 
-function readExpenses(sectionTitle = "Траты"): string[] {
+function readExpenses(sectionTitle = RU.expenses.heading): string[] {
   const rows = [...findSection(sectionTitle).querySelectorAll(".expense")];
 
   return rows.map((row) => {
@@ -138,7 +151,8 @@ function readExpenses(sectionTitle = "Траты"): string[] {
 
 function readParticipantsMessage(): string {
   return normalize(
-    findSection("Участники").querySelector(".message")?.textContent ?? "",
+    findSection(RU.participants.heading).querySelector(".message")
+      ?.textContent ?? "",
   );
 }
 
@@ -190,7 +204,7 @@ function readUndoText(sectionTitle: string): string {
   );
 }
 
-function readSummary(sectionTitle = "Итог"): string[] {
+function readSummary(sectionTitle = RU.summary.heading): string[] {
   const summary = readSummarySection(sectionTitle);
   const cards = [...summary.querySelectorAll(".transfer")];
   if (cards.length > 0) {
@@ -208,33 +222,29 @@ function readSummary(sectionTitle = "Итог"): string[] {
   return [normalize(summary.querySelector(".summary-status")?.textContent)];
 }
 
-function readSummarySection(sectionTitle = "Итог"): HTMLElement {
+function readSummarySection(sectionTitle = RU.summary.heading): HTMLElement {
   return findSection(sectionTitle);
 }
 
-function findAnnouncement(sectionTitle = "Итог"): HTMLElement {
+function findAnnouncement(sectionTitle = RU.summary.heading): HTMLElement {
   const announcement =
     readSummarySection(sectionTitle).querySelector<HTMLElement>("[aria-live]");
   if (announcement === null) throw new Error("Announcement area not found");
   return announcement;
 }
 
-function readAnnouncement(sectionTitle = "Итог"): string {
+function readAnnouncement(sectionTitle = RU.summary.heading): string {
   return normalize(findAnnouncement(sectionTitle).textContent);
 }
 
 function readRemoveExpenseLabels(): string[] {
   const buttons = [
-    ...findSection("Траты").querySelectorAll("button[aria-label]"),
+    ...findSection(RU.expenses.heading).querySelectorAll("button[aria-label]"),
   ];
   return buttons.map((button) => normalize(button.getAttribute("aria-label")));
 }
 
-function findRemoveExpenseButton(description: string): HTMLButtonElement {
-  return findButton(`Удалить трату: ${description}`);
-}
-
-function readBreakdown(summaryTitle = "Итог"): string[] {
+function readBreakdown(summaryTitle = RU.summary.heading): string[] {
   const rows = readSummarySection(summaryTitle).querySelectorAll("tbody tr");
 
   return [...rows].map((row) =>
@@ -268,9 +278,9 @@ const ENGLISH_SECTIONS = {
 
 // Literal codes, not produced by `encodeBill`: links already shared in the wild must keep opening,
 // so these codes must stay the same whatever the app is built with.
-/** The first version of the format: Russian names, no currency. */
+/** The first version of the format: no currency. */
 const LITERAL_CODE =
-  "1.W1si0JDQvdGPIiwi0JHQvtGA0Y8iLCLQktC10YDQsCIsItCT0L7RiNCwIl0sW1swLDQ4MDAwMCxbMCwxLDIsM11dLFsxLDEyNTA1MCxbMCwxLDJdXSxbMiw2MDAwMCxbMiwzXV1dXQ";
+  "1.W1siQW5uIiwiQmVuIiwiQ2xhcmEiLCJEYW4iXSxbWzAsNDgwMDAwLFswLDEsMiwzXV0sWzEsMTI1MDUwLFswLDEsMl1dLFsyLDYwMDAwLFsyLDNdXV1d";
 /** The current version: Ann paid 123.45 for both, Bob paid 5.00 for himself; in dollars. */
 const LITERAL_CODE_USD =
   "2.W1siQW5uIiwiQm9iIl0sW1swLDEyMzQ1LFswLDFdXSxbMSw1MDAsWzFdXV0sIlVTRCJd";
@@ -278,17 +288,14 @@ const LITERAL_CODE_USD =
 const LITERAL_CODE_RUB =
   "2.W1siQW5uIiwiQm9iIl0sW1swLDEyMzQ1LFswLDFdXSxbMSw1MDAsWzFdXV0sIlJVQiJd";
 
-const SHARE_COPIED_RU =
-  "Ссылка скопирована. Отправьте её друзьям — они увидят этот счёт";
-const SHARE_COPY_MANUALLY_RU =
-  "Скопировать автоматически не вышло: скопируйте ссылку из поля и отправьте друзьям";
+const SHARE_COPIED_RU = RU.share.copied;
+const SHARE_COPY_MANUALLY_RU = RU.share.copyManually;
 const SHARE_COPIED_EN =
   "Link copied. Send it to your group — they will see this bill";
 const SHARE_COPY_MANUALLY_EN =
   "Couldn't copy automatically: copy the link from the field and send it to your group";
 
-const EMPTY_SUMMARY =
-  "Добавьте траты — здесь появится, кто кому сколько должен";
+const EMPTY_SUMMARY = RU.summary.emptyHint;
 
 /** Mounts the app again at the current address, removing the handlers of the previous one. */
 function remountApp(locale: Locale = "ru"): void {
@@ -324,65 +331,71 @@ describe("the bill splitting scenario", () => {
   it("shows who transfers to whom and brings the hint back after an expense is removed", () => {
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
 
-    addParticipant("Аня");
-    addParticipant("Боря");
-    addParticipant("Вера");
-    selectPayer("Аня");
+    addParticipant("Ann");
+    addParticipant("Ben");
+    addParticipant("Clara");
+    selectPayer("Ann");
     addExpense("900");
 
     expect(readSummary()).toEqual([
-      "Боря → Аня: 300,00 ₽",
-      "Вера → Аня: 300,00 ₽",
+      "Ben → Ann: 300,00 ₽",
+      "Clara → Ann: 300,00 ₽",
     ]);
-    expect(readExpenses()).toEqual(["Аня — 900,00 ₽, за всех"]);
+    expect(readExpenses()).toEqual([
+      `Ann — 900,00 ₽, ${RU.expenses.forEveryone}`,
+    ]);
 
-    findRemoveExpenseButton("Аня — 900,00 ₽, за всех").click();
+    findButton(
+      RU.expenses.removeLabel("Ann", "900,00 ₽", RU.expenses.forEveryone),
+    ).click();
 
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
 
   it("says no transfers are needed when everyone is settled", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
     addExpense("100");
 
-    expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
+    expect(readSummary()).toEqual([RU.summary.settledHint]);
   });
 
   it("lists the recipients of an expense separated by commas", () => {
-    addParticipant("Аня");
-    addParticipant("Боря");
-    addParticipant("Вера");
-    uncheckBeneficiary("Вера");
+    addParticipant("Ann");
+    addParticipant("Ben");
+    addParticipant("Clara");
+    uncheckBeneficiary("Clara");
     addExpense("100");
 
-    expect(readExpenses()).toEqual(["Аня — 100,00 ₽, за: Аня, Боря"]);
+    expect(readExpenses()).toEqual([
+      `Ann — 100,00 ₽, ${RU.expenses.forBeneficiaries(["Ann", "Ben"])}`,
+    ]);
   });
 
   it("after adding an expense clears the amount, checks everyone and keeps the payer", () => {
-    addParticipant("Аня");
-    addParticipant("Боря");
-    selectPayer("Боря");
-    uncheckBeneficiary("Аня");
+    addParticipant("Ann");
+    addParticipant("Ben");
+    selectPayer("Ben");
+    uncheckBeneficiary("Ann");
     addExpense("100");
 
     const select = findPayerSelect();
     const checkboxes = [
       ...root.querySelectorAll<HTMLInputElement>("label.checkbox input"),
     ];
-    expect(findInput("Сколько, ₽").value).toBe("");
+    expect(findInput(RU.expenses.amountLabel("₽")).value).toBe("");
     expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([
       true,
       true,
     ]);
-    expect(select.selectedOptions[0]?.text).toBe("Боря");
+    expect(select.selectedOptions[0]?.text).toBe("Ben");
   });
 
   it("checks everyone again when the list of participants changes", () => {
-    addParticipant("Аня");
-    addParticipant("Боря");
-    uncheckBeneficiary("Аня");
+    addParticipant("Ann");
+    addParticipant("Ben");
+    uncheckBeneficiary("Ann");
 
-    addParticipant("Вера");
+    addParticipant("Clara");
 
     const checkboxes = [
       ...root.querySelectorAll<HTMLInputElement>("label.checkbox input"),
@@ -397,13 +410,13 @@ describe("the bill splitting scenario", () => {
   it("while there are no participants, shows a hint instead of the expense form", () => {
     const form = root.querySelectorAll("form")[1];
     const notice = [...root.querySelectorAll("p")].find(
-      (paragraph) => paragraph.textContent === "Сначала добавьте участников",
+      (paragraph) => paragraph.textContent === RU.expenses.noParticipantsHint,
     );
 
     expect(form?.hidden).toBe(true);
     expect(notice?.hidden).toBe(false);
 
-    addParticipant("Аня");
+    addParticipant("Ann");
 
     expect(form?.hidden).toBe(false);
     expect(notice?.hidden).toBe(true);
@@ -417,46 +430,46 @@ describe("header", () => {
 
   it("shows the title and the subtitle", () => {
     expect(root.querySelector(".page-header h1")?.textContent).toBe(
-      "Делим счёт",
+      RU.header.title,
     );
     expect(root.querySelector(".page-subtitle")?.textContent).toBe(
-      "Кто кому сколько должен — без таблиц и споров",
+      RU.header.subtitle,
     );
   });
 
   it("shows zeros for an empty bill", () => {
     expect(readOverview()).toEqual([
-      "0 участников",
-      "0 трат",
-      "потрачено 0,00 ₽",
+      `0 ${RU_PARTICIPANTS.many}`,
+      `0 ${RU_EXPENSES.many}`,
+      RU.header.spent("0,00 ₽"),
     ]);
   });
 
   it("counts participants, expenses and the total spent", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
 
     expect(readOverview()).toEqual([
-      "3 участника",
-      "1 трата",
-      "потрачено 900,00 ₽",
+      `3 ${RU_PARTICIPANTS.few}`,
+      `1 ${RU_EXPENSES.one}`,
+      RU.header.spent("900,00 ₽"),
     ]);
   });
 });
 
 describe("delete buttons", () => {
   it("are icons without visible text, and aria-label gives them the name", () => {
-    addParticipants("Аня", "Боря");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben");
+    addExpenseBy("Ann", "900");
 
     const buttons = [...root.querySelectorAll("button.icon-button")];
 
     expect(
       buttons.map((button) => normalize(button.getAttribute("aria-label"))),
     ).toEqual([
-      "Удалить участника Аня",
-      "Удалить участника Боря",
-      "Удалить трату: Аня — 900,00 ₽, за всех",
+      RU.participants.removeLabel("Ann"),
+      RU.participants.removeLabel("Ben"),
+      RU.expenses.removeLabel("Ann", "900,00 ₽", RU.expenses.forEveryone),
     ]);
     for (const button of buttons) {
       expect(button.querySelector("svg")).not.toBeNull();
@@ -475,8 +488,8 @@ describe("avatars", () => {
   }
 
   it("one person has the same tone everywhere", () => {
-    addParticipants("Аня", "Боря");
-    selectPayer("Боря");
+    addParticipants("Ann", "Ben");
+    selectPayer("Ben");
     addExpense("100");
 
     const participantChip = root.querySelectorAll(".chip")[1] ?? null;
@@ -495,8 +508,12 @@ describe("avatars", () => {
 describe("empty state hints", () => {
   function readHints(): string[] {
     const hints = [
-      ...findSection("Участники").querySelectorAll<HTMLElement>(".empty-state"),
-      ...findSection("Траты").querySelectorAll<HTMLElement>(".empty-state"),
+      ...findSection(RU.participants.heading).querySelectorAll<HTMLElement>(
+        ".empty-state",
+      ),
+      ...findSection(RU.expenses.heading).querySelectorAll<HTMLElement>(
+        ".empty-state",
+      ),
     ];
 
     return hints
@@ -504,26 +521,24 @@ describe("empty state hints", () => {
       .map((hint) => normalize(hint.textContent));
   }
 
-  const NO_PARTICIPANTS_HINT =
-    "Добавьте всех, кто участвует, — хватит имени. Себя тоже";
-  const NO_EXPENSES_HINT =
-    "Трат пока нет. Добавьте первую: кто платил, сколько и за кого";
+  const NO_PARTICIPANTS_HINT = RU.participants.emptyHint;
+  const NO_EXPENSES_HINT = RU.expenses.emptyHint;
 
   it("without participants asks to add people and shows the other hints", () => {
     expect(readHints()).toEqual([
       NO_PARTICIPANTS_HINT,
-      "Сначала добавьте участников",
+      RU.expenses.noParticipantsHint,
     ]);
   });
 
   it("with participants and no expenses asks to add the first expense", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
 
     expect(readHints()).toEqual([NO_EXPENSES_HINT]);
   });
 
   it("the expenses hint disappears after the first expense", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
     addExpense("100");
 
     expect(readHints()).toEqual([]);
@@ -539,28 +554,27 @@ describe("empty state hints", () => {
 });
 
 describe("explanation of the summary", () => {
-  const ROUNDING_TEXT =
-    "Когда трата не делится поровну до копейки, у тех, кто выше в списке участников, доля на копейку больше.";
+  const ROUNDING_TEXT = RU.roundingNote.RUB;
 
   it("shows the breakdown for one person who paid for everyone", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
 
-    expect(readParagraphs()).toContain("Всего потрачено: 900,00 ₽");
+    expect(readParagraphs()).toContain(RU.summary.totalSpent("900,00 ₽"));
     expect(readBreakdown()).toEqual([
-      "Аня | 900,00 ₽ | 300,00 ₽ | получает +600,00 ₽",
-      "Боря | 0,00 ₽ | 300,00 ₽ | отдаёт −300,00 ₽",
-      "Вера | 0,00 ₽ | 300,00 ₽ | отдаёт −300,00 ₽",
+      `Ann | 900,00 ₽ | 300,00 ₽ | ${RU.summary.receives("600,00 ₽")}`,
+      `Ben | 0,00 ₽ | 300,00 ₽ | ${RU.summary.gives("300,00 ₽")}`,
+      `Clara | 0,00 ₽ | 300,00 ₽ | ${RU.summary.gives("300,00 ₽")}`,
     ]);
     expect(
       readSummarySection().querySelector("details > summary")?.textContent,
-    ).toBe("Как посчитано");
+    ).toBe(RU.summary.breakdownTitle);
   });
 
-  it('tells "получает" from "отдаёт" by class, sign and word', () => {
-    addParticipants("Аня", "Боря", "Вера");
-    uncheckBeneficiary("Вера");
-    addExpenseBy("Аня", "100");
+  it('tells "receives" from "gives" by class, sign and word', () => {
+    addParticipants("Ann", "Ben", "Clara");
+    uncheckBeneficiary("Clara");
+    addExpenseBy("Ann", "100");
 
     const outcomes = [...readSummarySection().querySelectorAll("td.outcome")];
 
@@ -570,15 +584,15 @@ describe("explanation of the summary", () => {
       "outcome outcome-settled",
     ]);
     expect(outcomes.map((outcome) => normalize(outcome.textContent))).toEqual([
-      "получает +50,00 ₽",
-      "отдаёт \u221250,00 ₽",
-      "в расчёте",
+      RU.summary.receives("50,00 ₽"),
+      RU.summary.gives("50,00 ₽"),
+      RU.summary.balanced,
     ]);
   });
 
-  it('hides the reason for the number of transfers inside "Как посчитано"', () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+  it('hides the reason for the number of transfers inside "How it is calculated"', () => {
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
 
     const breakdown = readSummarySection().querySelector("details");
 
@@ -590,117 +604,119 @@ describe("explanation of the summary", () => {
   });
 
   it("explains why there are exactly this many transfers", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
 
-    expect(
-      readReason()?.startsWith(
-        "2 перевода — меньше не получится: деньги отдают или получают 3 человека, ",
-      ),
-    ).toBe(true);
+    expect(readReason()).toBe(
+      RU.summary.reasonMinimal(`2 ${RU_TRANSFERS.few}`, `3 ${RU_PEOPLE.few}`),
+    );
   });
 
   it("100 rubles for three: two transfers of 33.33 ₽", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "100");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "100");
 
     expect(readSummary()).toEqual([
-      "Боря → Аня: 33,33 ₽",
-      "Вера → Аня: 33,33 ₽",
+      "Ben → Ann: 33,33 ₽",
+      "Clara → Ann: 33,33 ₽",
     ]);
   });
 
   it("mutual debts of 700 and 300 ₽: one transfer of 400 ₽", () => {
-    addParticipants("Аня", "Боря");
-    uncheckBeneficiary("Аня");
-    addExpenseBy("Аня", "700");
-    uncheckBeneficiary("Боря");
-    addExpenseBy("Боря", "300");
+    addParticipants("Ann", "Ben");
+    uncheckBeneficiary("Ann");
+    addExpenseBy("Ann", "700");
+    uncheckBeneficiary("Ben");
+    addExpenseBy("Ben", "300");
 
-    expect(readSummary()).toEqual(["Боря → Аня: 400,00 ₽"]);
+    expect(readSummary()).toEqual(["Ben → Ann: 400,00 ₽"]);
   });
 
-  it('with mutual debts shows "в расчёте" and does not explain the number of transfers', () => {
-    addParticipants("Аня", "Боря");
-    uncheckBeneficiary("Аня");
-    addExpenseBy("Аня", "500");
-    uncheckBeneficiary("Боря");
-    addExpenseBy("Боря", "500");
+  it("with mutual debts shows the settled outcome and does not explain the number of transfers", () => {
+    addParticipants("Ann", "Ben");
+    uncheckBeneficiary("Ann");
+    addExpenseBy("Ann", "500");
+    uncheckBeneficiary("Ben");
+    addExpenseBy("Ben", "500");
 
-    expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
+    expect(readSummary()).toEqual([RU.summary.settledHint]);
     expect(readReason()).toBeUndefined();
     expect(readBreakdown()).toEqual([
-      "Аня | 500,00 ₽ | 500,00 ₽ | в расчёте",
-      "Боря | 500,00 ₽ | 500,00 ₽ | в расчёте",
+      `Ann | 500,00 ₽ | 500,00 ₽ | ${RU.summary.balanced}`,
+      `Ben | 500,00 ₽ | 500,00 ₽ | ${RU.summary.balanced}`,
     ]);
   });
 
   it("explains that there are fewer transfers than usual when the group splits into subgroups", () => {
-    addParticipants("Аня", "Боря", "Вера", "Гена");
-    uncheckBeneficiary("Аня");
-    uncheckBeneficiary("Вера");
-    uncheckBeneficiary("Гена");
-    addExpenseBy("Аня", "300");
-    uncheckBeneficiary("Аня");
-    uncheckBeneficiary("Боря");
-    uncheckBeneficiary("Вера");
-    addExpenseBy("Вера", "200");
+    addParticipants("Ann", "Ben", "Clara", "Eve");
+    uncheckBeneficiary("Ann");
+    uncheckBeneficiary("Clara");
+    uncheckBeneficiary("Eve");
+    addExpenseBy("Ann", "300");
+    uncheckBeneficiary("Ann");
+    uncheckBeneficiary("Ben");
+    uncheckBeneficiary("Clara");
+    addExpenseBy("Clara", "200");
 
     expect(readSummary()).toEqual([
-      "Боря → Аня: 300,00 ₽",
-      "Гена → Вера: 200,00 ₽",
+      "Ben → Ann: 300,00 ₽",
+      "Eve → Clara: 200,00 ₽",
     ]);
-    expect(
-      readReason()?.startsWith(
-        "2 перевода вместо обычных 3: деньги отдают или получают 4 человека",
+    expect(readReason()).toBe(
+      RU.summary.reasonGroups(
+        `2 ${RU_TRANSFERS.few}`,
+        "3",
+        `4 ${RU_PEOPLE.few}`,
       ),
-    ).toBe(true);
+    );
   });
 
   it("explains about kopecks when an expense does not divide evenly", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "100");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "100");
 
     expect(readNotes()).toContain(ROUNDING_TEXT);
   });
 
   it("does not explain about kopecks when all expenses divide evenly", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
 
     expect(readNotes()).not.toContain(ROUNDING_TEXT);
     expect(readNotes()).toHaveLength(1);
   });
 
   it("one participant with an expense on themselves: settled, no transfers", () => {
-    addParticipants("Аня");
-    addExpenseBy("Аня", "500");
+    addParticipants("Ann");
+    addExpenseBy("Ann", "500");
 
-    expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
-    expect(readBreakdown()).toEqual(["Аня | 500,00 ₽ | 500,00 ₽ | в расчёте"]);
+    expect(readSummary()).toEqual([RU.summary.settledHint]);
+    expect(readBreakdown()).toEqual([
+      `Ann | 500,00 ₽ | 500,00 ₽ | ${RU.summary.balanced}`,
+    ]);
   });
 
-  it('a participant without expenses gets into the breakdown with the row "в расчёте"', () => {
-    addParticipants("Аня", "Боря", "Вера");
-    uncheckBeneficiary("Вера");
-    addExpenseBy("Аня", "100");
+  it("a participant without expenses gets into the breakdown with the settled outcome", () => {
+    addParticipants("Ann", "Ben", "Clara");
+    uncheckBeneficiary("Clara");
+    addExpenseBy("Ann", "100");
 
     expect(readBreakdown()).toEqual([
-      "Аня | 100,00 ₽ | 50,00 ₽ | получает +50,00 ₽",
-      "Боря | 0,00 ₽ | 50,00 ₽ | отдаёт −50,00 ₽",
-      "Вера | 0,00 ₽ | 0,00 ₽ | в расчёте",
+      `Ann | 100,00 ₽ | 50,00 ₽ | ${RU.summary.receives("50,00 ₽")}`,
+      `Ben | 0,00 ₽ | 50,00 ₽ | ${RU.summary.gives("50,00 ₽")}`,
+      `Clara | 0,00 ₽ | 0,00 ₽ | ${RU.summary.balanced}`,
     ]);
   });
 
   it("a very large amount is shown without losing kopecks", () => {
-    addParticipants("Аня", "Боря");
-    addExpenseBy("Аня", "1000000000");
+    addParticipants("Ann", "Ben");
+    addExpenseBy("Ann", "1000000000");
 
-    expect(readSummary()).toEqual(["Боря → Аня: 500 000 000,00 ₽"]);
+    expect(readSummary()).toEqual(["Ben → Ann: 500 000 000,00 ₽"]);
   });
 
-  it('without expenses does not show "Как посчитано"', () => {
-    addParticipants("Аня", "Боря");
+  it('without expenses does not show "How it is calculated"', () => {
+    addParticipants("Ann", "Ben");
 
     expect(readSummarySection().querySelector("details")).toBeNull();
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
@@ -709,13 +725,13 @@ describe("explanation of the summary", () => {
 
 describe("transfer cards", () => {
   it("above the cards says how many transfers are needed", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
 
     const count = readSummarySection().querySelector(".transfers-count");
 
     expect(normalize(count?.textContent)).toBe(
-      "Чтобы рассчитаться, нужно 2 перевода",
+      RU.summary.transfersNeeded(`2 ${RU_TRANSFERS.few}`),
     );
     expect(count?.nextElementSibling?.classList.contains("transfers")).toBe(
       true,
@@ -723,15 +739,15 @@ describe("transfer cards", () => {
   });
 
   it("when everyone is settled, there is no line about the number of transfers", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
     addExpense("100");
 
     expect(readSummarySection().querySelector(".transfers-count")).toBeNull();
   });
 
   it("participants on the cards have the same avatar tones as in the chips", () => {
-    addParticipants("Аня", "Боря");
-    addExpenseBy("Боря", "100");
+    addParticipants("Ann", "Ben");
+    addExpenseBy("Ben", "100");
 
     const chipTones = [...root.querySelectorAll(".chip .avatar")].map(
       (avatar) => avatar.className,
@@ -740,7 +756,7 @@ describe("transfer cards", () => {
       ...readSummarySection().querySelectorAll(".transfer-people .avatar"),
     ].map((avatar) => avatar.className);
 
-    expect(readSummary()).toEqual(["Аня → Боря: 50,00 ₽"]);
+    expect(readSummary()).toEqual(["Ann → Ben: 50,00 ₽"]);
     expect(cardTones).toEqual(chipTones);
   });
 
@@ -752,27 +768,31 @@ describe("transfer cards", () => {
 
     expect(summaryHint()).toBe(EMPTY_SUMMARY);
 
-    addParticipant("Аня");
+    addParticipant("Ann");
     addExpense("100");
 
-    expect(summaryHint()).toBe("Все в расчёте — переводы не нужны");
+    expect(summaryHint()).toBe(RU.summary.settledHint);
   });
 });
 
 describe("captions of the expense delete buttons", () => {
   it("tell apart expenses of one payer, and a click removes exactly the chosen one", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
     addExpense("300");
 
     expect(readRemoveExpenseLabels()).toEqual([
-      "Удалить трату: Аня — 900,00 ₽, за всех",
-      "Удалить трату: Аня — 300,00 ₽, за всех",
+      RU.expenses.removeLabel("Ann", "900,00 ₽", RU.expenses.forEveryone),
+      RU.expenses.removeLabel("Ann", "300,00 ₽", RU.expenses.forEveryone),
     ]);
 
-    findRemoveExpenseButton("Аня — 300,00 ₽, за всех").click();
+    findButton(
+      RU.expenses.removeLabel("Ann", "300,00 ₽", RU.expenses.forEveryone),
+    ).click();
 
-    expect(readExpenses()).toEqual(["Аня — 900,00 ₽, за всех"]);
+    expect(readExpenses()).toEqual([
+      `Ann — 900,00 ₽, ${RU.expenses.forEveryone}`,
+    ]);
   });
 });
 
@@ -800,68 +820,76 @@ describe("accessibility of the summary", () => {
   });
 
   it("without expenses says there are no expenses yet", () => {
-    expect(readAnnouncement()).toBe("Итог: трат пока нет");
+    expect(readAnnouncement()).toBe(RU.summary.announcementNoExpenses);
   });
 
   it("announces the number of transfers, not the transfers themselves and the explanations", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
 
-    expect(readAnnouncement()).toBe("Итог: 2 перевода");
+    expect(readAnnouncement()).toBe(
+      RU.summary.announcement(`2 ${RU_TRANSFERS.few}`),
+    );
   });
 
   it("announces one transfer for mutual debts", () => {
-    addParticipants("Аня", "Боря");
-    uncheckBeneficiary("Аня");
-    addExpenseBy("Аня", "700");
-    uncheckBeneficiary("Боря");
-    addExpenseBy("Боря", "300");
+    addParticipants("Ann", "Ben");
+    uncheckBeneficiary("Ann");
+    addExpenseBy("Ann", "700");
+    uncheckBeneficiary("Ben");
+    addExpenseBy("Ben", "300");
 
-    expect(readAnnouncement()).toBe("Итог: 1 перевод");
+    expect(readAnnouncement()).toBe(
+      RU.summary.announcement(`1 ${RU_TRANSFERS.one}`),
+    );
   });
 
   it("when no transfers are needed, announces that everyone is settled", () => {
-    addParticipants("Аня");
-    addExpenseBy("Аня", "500");
+    addParticipants("Ann");
+    addExpenseBy("Ann", "500");
 
-    expect(readAnnouncement()).toBe("Итог: все в расчёте, переводы не нужны");
+    expect(readAnnouncement()).toBe(RU.summary.announcementSettled);
   });
 
   it("after the last expense is removed announces again that there are no expenses", () => {
-    addParticipants("Аня");
-    addExpenseBy("Аня", "500");
+    addParticipants("Ann");
+    addExpenseBy("Ann", "500");
 
-    findRemoveExpenseButton("Аня — 500,00 ₽, за всех").click();
+    findButton(
+      RU.expenses.removeLabel("Ann", "500,00 ₽", RU.expenses.forEveryone),
+    ).click();
 
-    expect(readAnnouncement()).toBe("Итог: трат пока нет");
+    expect(readAnnouncement()).toBe(RU.summary.announcementNoExpenses);
   });
 
   it("does not rewrite the area when participants are added without expenses", () => {
-    addParticipants("Аня");
+    addParticipants("Ann");
     const observer = observeAnnouncement();
 
-    addParticipants("Боря", "Вера");
+    addParticipants("Ben", "Clara");
 
     expect(observer.takeRecords()).toEqual([]);
     observer.disconnect();
   });
 
   it("does not rewrite the area when the number of transfers did not change", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
     const observer = observeAnnouncement();
 
-    addExpenseBy("Аня", "300");
+    addExpenseBy("Ann", "300");
 
     expect(readSummary()).toHaveLength(2);
-    expect(readAnnouncement()).toBe("Итог: 2 перевода");
+    expect(readAnnouncement()).toBe(
+      RU.summary.announcement(`2 ${RU_TRANSFERS.few}`),
+    );
     expect(observer.takeRecords()).toEqual([]);
     observer.disconnect();
   });
 
   it("does not nest live areas inside each other", () => {
-    addParticipants("Аня", "Боря", "Вера");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben", "Clara");
+    addExpenseBy("Ann", "900");
 
     expect(root.querySelectorAll("[aria-live] [aria-live]")).toHaveLength(0);
   });
@@ -871,123 +899,131 @@ describe("input errors", () => {
   it("rejects an empty name", () => {
     addParticipant("   ");
 
-    expect(readFieldError(findInput("Имя"))).toBe("Введите имя");
+    expect(readFieldError(findInput(RU.participants.nameLabel))).toBe(
+      RU.participants.nameEmpty,
+    );
     expect(readParticipantNames()).toEqual([]);
   });
 
   it("rejects a repeated name", () => {
-    addParticipant("Аня");
-    addParticipant("аня");
+    addParticipant("Ann");
+    addParticipant("ann");
 
-    expect(readFieldError(findInput("Имя"))).toBe(
-      "Участник с таким именем уже есть",
+    expect(readFieldError(findInput(RU.participants.nameLabel))).toBe(
+      RU.participants.nameDuplicate,
     );
-    expect(readParticipantNames()).toEqual(["Аня"]);
+    expect(readParticipantNames()).toEqual(["Ann"]);
   });
 
   it("rejects a name that is too long", () => {
-    addParticipant("я".repeat(MAX_NAME_LENGTH + 1));
+    addParticipant("ω".repeat(MAX_NAME_LENGTH + 1));
 
-    expect(readFieldError(findInput("Имя"))).toBe(
-      "Имя длиннее 40 знаков — сократите его",
+    expect(readFieldError(findInput(RU.participants.nameLabel))).toBe(
+      RU.participants.nameTooLong("40"),
     );
     expect(readParticipantNames()).toEqual([]);
   });
 
   it("rejects an expense after which the total will not fit the calculation", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
     addExpense("90071992547407,69");
     const expenses = readExpenses();
     const address = location.hash;
 
     addExpense("90071992547404,61");
 
-    expect(readFieldError(findInput("Сколько, ₽"))).toBe(
-      "Слишком большая сумма: общий итог счёта не поместится в расчёт",
+    expect(readFieldError(findInput(RU.expenses.amountLabel("₽")))).toBe(
+      RU.expenses.totalTooLargeError,
     );
     expect(readExpenses()).toEqual(expenses);
     expect(location.hash).toBe(address);
   });
 
   it.each(["", "0", "abc", "1,234"])("rejects the amount %j", (amount) => {
-    addParticipant("Аня");
+    addParticipant("Ann");
     addExpense(amount);
 
-    expect(readFieldError(findInput("Сколько, ₽"))).toBe(
-      "Введите сумму больше нуля, например 1500 или 349,90",
+    expect(readFieldError(findInput(RU.expenses.amountLabel("₽")))).toBe(
+      RU.expenses.amountError,
     );
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
 
   it("rejects an expense without checked recipients", () => {
-    addParticipant("Аня");
-    uncheckBeneficiary("Аня");
+    addParticipant("Ann");
+    uncheckBeneficiary("Ann");
     addExpense("100");
 
-    expect(readBeneficiariesError()).toBe("Отметьте, за кого платили");
+    expect(readBeneficiariesError()).toBe(RU.expenses.noBeneficiariesError);
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
   });
 
   it("does not remove a participant who is in the expenses", () => {
-    addParticipant("Аня");
-    addParticipant("Боря");
+    addParticipant("Ann");
+    addParticipant("Ben");
     addExpense("100");
 
-    findButton("Удалить участника Боря").click();
+    findButton(RU.participants.removeLabel("Ben")).click();
 
-    expect(readParticipantsMessage()).toBe(
-      "Нельзя удалить Боря: есть траты с этим участником. Сначала удалите их",
-    );
-    expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
+    expect(readParticipantsMessage()).toBe(RU.participants.cannotRemove("Ben"));
+    expect(readParticipantNames()).toEqual(["Ann", "Ben"]);
   });
 
   it("removes a participant without expenses", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
 
-    findButton("Удалить участника Аня").click();
+    findButton(RU.participants.removeLabel("Ann")).click();
 
     expect(readParticipantNames()).toEqual([]);
   });
 
   it("keeps the chosen payer after a participant is added", () => {
-    addParticipants("Аня", "Боря");
-    selectPayer("Боря");
+    addParticipants("Ann", "Ben");
+    selectPayer("Ben");
 
-    addParticipant("Вера");
+    addParticipant("Clara");
 
-    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Боря");
+    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Ben");
   });
 
   it("after the chosen payer is removed picks the remaining participant", () => {
-    addParticipants("Аня", "Боря");
-    selectPayer("Боря");
+    addParticipants("Ann", "Ben");
+    selectPayer("Ben");
 
-    findButton("Удалить участника Боря").click();
+    findButton(RU.participants.removeLabel("Ben")).click();
     addExpense("100");
 
-    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Аня");
-    expect(readExpenses()).toEqual(["Аня — 100,00 ₽, за всех"]);
+    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Ann");
+    expect(readExpenses()).toEqual([
+      `Ann — 100,00 ₽, ${RU.expenses.forEveryone}`,
+    ]);
   });
 
   it("after an amount error and a correction adds the expense and removes the message", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
     addExpense("abc");
-    expect(readFieldError(findInput("Сколько, ₽"))).not.toBe("");
+    expect(readFieldError(findInput(RU.expenses.amountLabel("₽")))).not.toBe(
+      "",
+    );
 
     addExpense("250");
 
-    expect(readFieldError(findInput("Сколько, ₽"))).toBe("");
-    expect(readExpenses()).toEqual(["Аня — 250,00 ₽, за всех"]);
+    expect(readFieldError(findInput(RU.expenses.amountLabel("₽")))).toBe("");
+    expect(readExpenses()).toEqual([
+      `Ann — 250,00 ₽, ${RU.expenses.forEveryone}`,
+    ]);
   });
 
   it("when the amount limit is exceeded keeps what was entered in the form", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
     addExpense("90071992547407,69");
-    uncheckBeneficiary("Аня");
+    uncheckBeneficiary("Ann");
 
     addExpense("90071992547404,61");
 
-    expect(findInput("Сколько, ₽").value).toBe("90071992547404,61");
+    expect(findInput(RU.expenses.amountLabel("₽")).value).toBe(
+      "90071992547404,61",
+    );
     expect(
       root.querySelector<HTMLInputElement>("label.checkbox input")?.checked,
     ).toBe(false);
@@ -996,8 +1032,8 @@ describe("input errors", () => {
 
 describe("selects", () => {
   it.each([
-    ["the payer", "Кто платил", findPayerSelect],
-    ["the currency", "Валюта", findCurrencySelect],
+    ["the payer", RU.expenses.payerLabel, findPayerSelect],
+    ["the currency", RU.currencyLabel, findCurrencySelect],
   ])(
     "%s select is native, sits in a select box with a hidden chevron and is tied to its label",
     (_, labelText, findSelect) => {
@@ -1014,7 +1050,7 @@ describe("selects", () => {
 });
 
 describe("errors at the fields", () => {
-  const AMOUNT_LABEL = "Сколько, ₽";
+  const AMOUNT_LABEL = RU.expenses.amountLabel("₽");
 
   function expectLinkedError(control: Element): void {
     const errorId = control.getAttribute("aria-describedby") ?? "";
@@ -1025,7 +1061,7 @@ describe("errors at the fields", () => {
   }
 
   it("keeps an empty error element with a live area for every field", () => {
-    addParticipant("Аня");
+    addParticipant("Ann");
 
     const errors = [...root.querySelectorAll(".field-error")];
 
@@ -1044,21 +1080,19 @@ describe("errors at the fields", () => {
     it.each(["", "0", "abc", "1,234"])(
       "marks the invalid amount %j, links the error and focuses the field",
       (amount) => {
-        addParticipant("Аня");
+        addParticipant("Ann");
         addExpense(amount);
 
         const input = findInput(AMOUNT_LABEL);
         expect(input.getAttribute("aria-invalid")).toBe("true");
         expectLinkedError(input);
-        expect(readFieldError(input)).toBe(
-          "Введите сумму больше нуля, например 1500 или 349,90",
-        );
+        expect(readFieldError(input)).toBe(RU.expenses.amountError);
         expect(document.activeElement).toBe(input);
       },
     );
 
     it("marks the total that is too large the same way", () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
       addExpense("90071992547407,69");
 
       addExpense("90071992547404,61");
@@ -1070,7 +1104,7 @@ describe("errors at the fields", () => {
     });
 
     it("lets the error go with one typed character", () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
       addExpense("abc");
       const input = findInput(AMOUNT_LABEL);
 
@@ -1082,10 +1116,10 @@ describe("errors at the fields", () => {
     });
 
     it("lets the error go when the bill changes", () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
       addExpense("abc");
 
-      addParticipant("Боря");
+      addParticipant("Ben");
 
       expect(findInput(AMOUNT_LABEL).hasAttribute("aria-invalid")).toBe(false);
     });
@@ -1093,21 +1127,21 @@ describe("errors at the fields", () => {
 
   describe("for whom", () => {
     it("marks the group, links the error and focuses the first checkbox", () => {
-      addParticipants("Аня", "Боря");
-      uncheckBeneficiary("Аня");
-      uncheckBeneficiary("Боря");
+      addParticipants("Ann", "Ben");
+      uncheckBeneficiary("Ann");
+      uncheckBeneficiary("Ben");
       addExpense("100");
 
       const fieldset = findBeneficiariesFieldset();
       expectLinkedError(fieldset);
-      expect(readBeneficiariesError()).toBe("Отметьте, за кого платили");
+      expect(readBeneficiariesError()).toBe(RU.expenses.noBeneficiariesError);
       expect(document.activeElement).toBe(findFirstBeneficiaryCheckbox());
       expect(findInput(AMOUNT_LABEL).hasAttribute("aria-invalid")).toBe(false);
     });
 
     it("lets the error go when a box is checked", () => {
-      addParticipant("Аня");
-      uncheckBeneficiary("Аня");
+      addParticipant("Ann");
+      uncheckBeneficiary("Ann");
       addExpense("100");
 
       fireEvent.click(findFirstBeneficiaryCheckbox());
@@ -1121,20 +1155,20 @@ describe("errors at the fields", () => {
 
   describe("name", () => {
     it.each([
-      ["empty", "   ", "Введите имя"],
-      ["repeated", "Аня", "Участник с таким именем уже есть"],
+      ["empty", "   ", RU.participants.nameEmpty],
+      ["repeated", "Ann", RU.participants.nameDuplicate],
       [
         "too long",
-        "я".repeat(MAX_NAME_LENGTH + 1),
-        "Имя длиннее 40 знаков — сократите его",
+        "ω".repeat(MAX_NAME_LENGTH + 1),
+        RU.participants.nameTooLong("40"),
       ],
     ])(
       "marks the %s name, links the error and focuses the field",
       (_, name, text) => {
-        addParticipant("Аня");
+        addParticipant("Ann");
         addParticipant(name);
 
-        const input = findInput("Имя");
+        const input = findInput(RU.participants.nameLabel);
         expect(input.getAttribute("aria-invalid")).toBe("true");
         expectLinkedError(input);
         expect(readFieldError(input)).toBe(text);
@@ -1144,29 +1178,36 @@ describe("errors at the fields", () => {
 
     it("lets the error go with one typed character", () => {
       addParticipant("   ");
-      const input = findInput("Имя");
+      const input = findInput(RU.participants.nameLabel);
 
-      fireEvent.input(input, { target: { value: "А" } });
+      fireEvent.input(input, { target: { value: "A" } });
 
       expect(input.hasAttribute("aria-invalid")).toBe(false);
       expect(input.hasAttribute("aria-describedby")).toBe(false);
     });
 
     it('keeps "can\'t remove" in the message area of the section', () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
       addExpense("100");
 
-      findButton("Удалить участника Аня").click();
+      findButton(RU.participants.removeLabel("Ann")).click();
 
-      expect(readParticipantsMessage()).toContain("Нельзя удалить Аня");
-      expect(findInput("Имя").hasAttribute("aria-invalid")).toBe(false);
+      expect(readParticipantsMessage()).toContain(
+        RU.participants.cannotRemove("Ann"),
+      );
+      expect(
+        findInput(RU.participants.nameLabel).hasAttribute("aria-invalid"),
+      ).toBe(false);
     });
   });
 });
 
 describe("amount placeholder", () => {
   it("shows the format with a comma on the Russian page", () => {
-    expect(findInput("Сколько, ₽").placeholder).toBe("1500 или 349,90");
+    const placeholder = findInput(RU.expenses.amountLabel("₽")).placeholder;
+
+    expect(placeholder).toBe(RU.expenses.amountPlaceholder);
+    expect(placeholder).toContain("349,90");
   });
 
   it("shows the format with a point on the English page", () => {
@@ -1178,45 +1219,52 @@ describe("amount placeholder", () => {
 
 describe("focus after adding an expense", () => {
   it("lands on the amount field and keeps the payer", () => {
-    addParticipants("Аня", "Боря");
-    selectPayer("Боря");
+    addParticipants("Ann", "Ben");
+    selectPayer("Ben");
 
     addExpense("100");
 
-    expect(document.activeElement).toBe(findInput("Сколько, ₽"));
-    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Боря");
+    expect(document.activeElement).toBe(
+      findInput(RU.expenses.amountLabel("₽")),
+    );
+    expect(findPayerSelect().selectedOptions[0]?.text).toBe("Ben");
   });
 });
 
 describe("undo of a removal", () => {
-  const EXPENSE = "Аня — 900,00 ₽, за всех";
+  const EXPENSE = `Ann — 900,00 ₽, ${RU.expenses.forEveryone}`;
+  const EXPENSE_REMOVE_LABEL = RU.expenses.removeLabel(
+    "Ann",
+    "900,00 ₽",
+    RU.expenses.forEveryone,
+  );
 
   function addAnnAndBobWithExpense(): void {
-    addParticipants("Аня", "Боря");
-    addExpenseBy("Аня", "900");
+    addParticipants("Ann", "Ben");
+    addExpenseBy("Ann", "900");
   }
 
   it("is not offered before anything is removed", () => {
     addAnnAndBobWithExpense();
 
-    expect(isUndoBarShown("Траты")).toBe(false);
-    expect(isUndoBarShown("Участники")).toBe(false);
+    expect(isUndoBarShown(RU.expenses.heading)).toBe(false);
+    expect(isUndoBarShown(RU.participants.heading)).toBe(false);
   });
 
   describe("of an expense", () => {
     it("says what was removed and moves the focus to the button", () => {
       addAnnAndBobWithExpense();
 
-      findRemoveExpenseButton(EXPENSE).click();
+      findButton(EXPENSE_REMOVE_LABEL).click();
 
-      const button = findUndoButton("Траты", "Вернуть");
-      expect(isUndoBarShown("Траты")).toBe(true);
-      expect(readUndoText("Траты")).toBe(
-        "Трата удалена: Аня — 900,00 ₽, за всех",
+      const button = findUndoButton(RU.expenses.heading, RU.undo.button);
+      expect(isUndoBarShown(RU.expenses.heading)).toBe(true);
+      expect(readUndoText(RU.expenses.heading)).toBe(
+        RU.expenses.removed("Ann", "900,00 ₽", RU.expenses.forEveryone),
       );
       expect(document.activeElement).toBe(button);
       expect(button.getAttribute("aria-describedby")).toBe(
-        findSection("Траты").querySelector(".undo p")?.id,
+        findSection(RU.expenses.heading).querySelector(".undo p")?.id,
       );
       expect(readExpenses()).toEqual([]);
     });
@@ -1225,126 +1273,130 @@ describe("undo of a removal", () => {
       addAnnAndBobWithExpense();
       const summary = readSummary();
       const address = location.hash;
-      findRemoveExpenseButton(EXPENSE).click();
+      findButton(EXPENSE_REMOVE_LABEL).click();
 
-      findUndoButton("Траты", "Вернуть").click();
+      findUndoButton(RU.expenses.heading, RU.undo.button).click();
 
       expect(readExpenses()).toEqual([EXPENSE]);
       expect(readSummary()).toEqual(summary);
       expect(location.hash).toBe(address);
-      expect(document.activeElement).toBe(findInput("Сколько, ₽"));
-      expect(isUndoBarShown("Траты")).toBe(false);
+      expect(document.activeElement).toBe(
+        findInput(RU.expenses.amountLabel("₽")),
+      );
+      expect(isUndoBarShown(RU.expenses.heading)).toBe(false);
     });
 
     it("goes away at the next change of the bill", () => {
       addAnnAndBobWithExpense();
-      findRemoveExpenseButton(EXPENSE).click();
+      findButton(EXPENSE_REMOVE_LABEL).click();
 
-      addParticipant("Вера");
+      addParticipant("Clara");
 
-      expect(isUndoBarShown("Траты")).toBe(false);
+      expect(isUndoBarShown(RU.expenses.heading)).toBe(false);
     });
 
     it("goes away when the address changes", () => {
       addAnnAndBobWithExpense();
-      findRemoveExpenseButton(EXPENSE).click();
+      findButton(EXPENSE_REMOVE_LABEL).click();
       const code = encodeBill(
-        { participants: [{ id: "anna", name: "Аня" }], expenses: [] },
+        { participants: [{ id: "ann", name: "Ann" }], expenses: [] },
         "RUB",
       );
 
       changeAddressOnPage(`/#${code}`);
 
-      expect(isUndoBarShown("Траты")).toBe(false);
+      expect(isUndoBarShown(RU.expenses.heading)).toBe(false);
     });
 
     it("stays when the currency changes and restores the bill in the chosen currency", () => {
       addAnnAndBobWithExpense();
-      findRemoveExpenseButton(EXPENSE).click();
+      findButton(EXPENSE_REMOVE_LABEL).click();
 
       chooseCurrency("USD");
 
-      expect(isUndoBarShown("Траты")).toBe(true);
+      expect(isUndoBarShown(RU.expenses.heading)).toBe(true);
 
-      findUndoButton("Траты", "Вернуть").click();
+      findUndoButton(RU.expenses.heading, RU.undo.button).click();
 
-      expect(readExpenses()).toEqual(["Аня — 900,00 $, за всех"]);
+      expect(readExpenses()).toEqual([
+        `Ann — 900,00 $, ${RU.expenses.forEveryone}`,
+      ]);
     });
   });
 
   describe("of a participant", () => {
     it("says who was removed and moves the focus to the button", () => {
-      addParticipants("Аня", "Боря");
+      addParticipants("Ann", "Ben");
 
-      findButton("Удалить участника Боря").click();
+      findButton(RU.participants.removeLabel("Ben")).click();
 
-      expect(readUndoText("Участники")).toBe("Участник удалён: Боря");
-      expect(document.activeElement).toBe(
-        findUndoButton("Участники", "Вернуть"),
+      expect(readUndoText(RU.participants.heading)).toBe(
+        RU.participants.removed("Ben"),
       );
-      expect(readParticipantNames()).toEqual(["Аня"]);
+      expect(document.activeElement).toBe(
+        findUndoButton(RU.participants.heading, RU.undo.button),
+      );
+      expect(readParticipantNames()).toEqual(["Ann"]);
     });
 
     it("brings back the participant and the address and focuses the name", () => {
-      addParticipants("Аня", "Боря");
+      addParticipants("Ann", "Ben");
       const address = location.hash;
-      findButton("Удалить участника Боря").click();
+      findButton(RU.participants.removeLabel("Ben")).click();
 
-      findUndoButton("Участники", "Вернуть").click();
+      findUndoButton(RU.participants.heading, RU.undo.button).click();
 
-      expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
+      expect(readParticipantNames()).toEqual(["Ann", "Ben"]);
       expect(location.hash).toBe(address);
-      expect(document.activeElement).toBe(findInput("Имя"));
-      expect(isUndoBarShown("Участники")).toBe(false);
+      expect(document.activeElement).toBe(findInput(RU.participants.nameLabel));
+      expect(isUndoBarShown(RU.participants.heading)).toBe(false);
     });
 
     it("goes away at the next change of the bill", () => {
-      addParticipants("Аня", "Боря");
-      findButton("Удалить участника Боря").click();
+      addParticipants("Ann", "Ben");
+      findButton(RU.participants.removeLabel("Ben")).click();
 
-      addParticipant("Вера");
+      addParticipant("Clara");
 
-      expect(isUndoBarShown("Участники")).toBe(false);
+      expect(isUndoBarShown(RU.participants.heading)).toBe(false);
     });
 
     it("is not offered when the removal is refused", () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
       addExpense("100");
 
-      findButton("Удалить участника Аня").click();
+      findButton(RU.participants.removeLabel("Ann")).click();
 
-      expect(isUndoBarShown("Участники")).toBe(false);
+      expect(isUndoBarShown(RU.participants.heading)).toBe(false);
     });
   });
 });
 
 describe("escaping", () => {
   it("shows markup in a name as plain text", () => {
-    addParticipant("<b>Ли</b>");
+    addParticipant("<b>Li</b>");
 
-    expect(readParticipantNames()).toEqual(["<b>Ли</b>"]);
+    expect(readParticipantNames()).toEqual(["<b>Li</b>"]);
     expect(root.querySelector("b")).toBeNull();
   });
 });
 
 describe("bill link", () => {
-  const anna = { id: "anna", name: "Аня" };
-  const boris = { id: "boris", name: "Боря" };
+  const ann = { id: "ann", name: "Ann" };
+  const ben = { id: "ben", name: "Ben" };
   const billWithDinner: Bill = {
-    participants: [anna, boris],
+    participants: [ann, ben],
     expenses: [
       {
         id: "dinner",
-        payerId: anna.id,
+        payerId: ann.id,
         amount: 90_000,
-        beneficiaryIds: [anna.id, boris.id],
+        beneficiaryIds: [ann.id, ben.id],
       },
     ],
   };
-  const MALFORMED_NOTICE =
-    "Не получилось открыть счёт по ссылке: она повреждена или скопирована не целиком. Попросите прислать её ещё раз, а пока можно начать новый счёт.";
-  const UNSUPPORTED_NOTICE =
-    "Эта ссылка сделана в другой версии приложения, и открыть её здесь не получится. Попросите прислать новую ссылку, а пока можно начать новый счёт.";
+  const MALFORMED_NOTICE = RU.linkNotice.malformed;
+  const UNSUPPORTED_NOTICE = RU.linkNotice.unsupportedVersion;
 
   function openAddress(url: string): void {
     history.replaceState(null, "", url);
@@ -1364,7 +1416,7 @@ describe("bill link", () => {
   }
 
   function readShareSection(): HTMLElement {
-    return findSection("Поделиться");
+    return findSection(RU.share.heading);
   }
 
   function readShareMessage(): string {
@@ -1373,7 +1425,7 @@ describe("bill link", () => {
   }
 
   function readLinkField(): HTMLInputElement {
-    return findInput("Ссылка на счёт");
+    return findInput(RU.share.linkLabel);
   }
 
   function isLinkFieldHidden(): boolean {
@@ -1409,25 +1461,25 @@ describe("bill link", () => {
     });
 
     it("after a participant is added contains the code of the current bill", () => {
-      addParticipant("Аня");
-      addParticipant("Боря");
+      addParticipant("Ann");
+      addParticipant("Ben");
 
-      const expectedBill: Bill = { participants: [anna, boris], expenses: [] };
+      const expectedBill: Bill = { participants: [ann, ben], expenses: [] };
       expect(location.hash).toBe(`#${encodeBill(expectedBill, "RUB")}`);
     });
 
     it("after an expense is added contains the code of the bill with the expense", () => {
-      addParticipant("Аня");
-      addParticipant("Боря");
-      selectPayer("Аня");
+      addParticipant("Ann");
+      addParticipant("Ben");
+      selectPayer("Ann");
       addExpense("900");
 
       expect(location.hash).toBe(`#${encodeBill(billWithDinner, "RUB")}`);
     });
 
     it("after the last participant is removed writes the code of an empty bill", () => {
-      addParticipant("Аня");
-      findButton("Удалить участника Аня").click();
+      addParticipant("Ann");
+      findButton(RU.participants.removeLabel("Ann")).click();
 
       expect(location.hash).toBe(
         `#${encodeBill({ participants: [], expenses: [] }, "RUB")}`,
@@ -1437,8 +1489,8 @@ describe("bill link", () => {
     it("adds no entries to the history", () => {
       const lengthBefore = history.length;
 
-      addParticipant("Аня");
-      addParticipant("Боря");
+      addParticipant("Ann");
+      addParticipant("Ben");
       addExpense("100");
 
       expect(history.length).toBe(lengthBefore);
@@ -1447,7 +1499,7 @@ describe("bill link", () => {
     it("keeps the path and the query", () => {
       openAddress("/split-bill/?from=chat");
 
-      addParticipant("Аня");
+      addParticipant("Ann");
 
       expect(location.pathname).toBe("/split-bill/");
       expect(location.search).toBe("?from=chat");
@@ -1457,14 +1509,14 @@ describe("bill link", () => {
 
   describe("opening by a link", () => {
     it("a new app at the same address shows the same bill", () => {
-      addParticipant("Аня");
-      addParticipant("Боря");
-      selectPayer("Аня");
-      uncheckBeneficiary("Боря");
+      addParticipant("Ann");
+      addParticipant("Ben");
+      selectPayer("Ann");
+      uncheckBeneficiary("Ben");
       addExpense("700");
-      selectPayer("Боря");
-      uncheckBeneficiary("Аня");
-      uncheckBeneficiary("Боря");
+      selectPayer("Ben");
+      uncheckBeneficiary("Ann");
+      uncheckBeneficiary("Ben");
       const participants = readParticipantNames();
       const expenses = readExpenses();
       const summary = readSummary();
@@ -1483,11 +1535,11 @@ describe("bill link", () => {
     it("after opening, new participants do not clash with the parsed ones", () => {
       openCode(encodeBill(billWithDinner, "RUB"));
 
-      addParticipant("Вера");
-      selectPayer("Вера");
+      addParticipant("Clara");
+      selectPayer("Clara");
       addExpense("300");
 
-      expect(readParticipantNames()).toEqual(["Аня", "Боря", "Вера"]);
+      expect(readParticipantNames()).toEqual(["Ann", "Ben", "Clara"]);
       expect(readBreakdown()).toHaveLength(3);
     });
 
@@ -1501,7 +1553,7 @@ describe("bill link", () => {
     });
 
     it.each([
-      ["#мусор", "мусор", MALFORMED_NOTICE],
+      ["#垃圾", "垃圾", MALFORMED_NOTICE],
       ["#1.!!!", "1.!!!", MALFORMED_NOTICE],
       ["bill with repeated names", invalidBillCode(), MALFORMED_NOTICE],
       [
@@ -1534,7 +1586,7 @@ describe("bill link", () => {
 
       changeAddressOnPage(`/#${encodeBill(billWithDinner, "RUB")}`);
 
-      expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
+      expect(readParticipantNames()).toEqual(["Ann", "Ben"]);
     });
 
     it("does not change the address while the bill has not changed", () => {
@@ -1546,17 +1598,17 @@ describe("bill link", () => {
     it("after the first change replaces the address with a valid code, the forms work", () => {
       openCode("1.!!!");
 
-      addParticipant("Аня");
+      addParticipant("Ann");
 
-      const expectedBill: Bill = { participants: [anna], expenses: [] };
-      expect(readParticipantNames()).toEqual(["Аня"]);
+      const expectedBill: Bill = { participants: [ann], expenses: [] };
+      expect(readParticipantNames()).toEqual(["Ann"]);
       expect(location.hash).toBe(`#${encodeBill(expectedBill, "RUB")}`);
     });
 
-    it('"Закрыть" hides the message and changes nothing else', () => {
+    it('"Close" hides the message and changes nothing else', () => {
       openCode("1.!!!");
 
-      findButton("Закрыть сообщение").click();
+      findButton(RU.linkNotice.closeLabel).click();
 
       expect(readNotice()?.hidden).toBe(true);
       expect(location.hash).toBe("#1.!!!");
@@ -1573,8 +1625,14 @@ describe("bill link", () => {
         "layout-main",
         "layout-side",
       ]);
-      expect(readTitles(columns[0])).toEqual(["Участники", "Траты"]);
-      expect(readTitles(columns[1])).toEqual(["Итог", "Поделиться"]);
+      expect(readTitles(columns[0])).toEqual([
+        RU.participants.heading,
+        RU.expenses.heading,
+      ]);
+      expect(readTitles(columns[1])).toEqual([
+        RU.summary.heading,
+        RU.share.heading,
+      ]);
     });
 
     it("the message stands between the header and the sections", () => {
@@ -1590,51 +1648,57 @@ describe("bill link", () => {
     it("shows the bill from a new valid code", () => {
       changeAddressOnPage(`/#${encodeBill(billWithDinner, "RUB")}`);
 
-      expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
-      expect(readSummary()).toEqual(["Боря → Аня: 450,00 ₽"]);
+      expect(readParticipantNames()).toEqual(["Ann", "Ben"]);
+      expect(readSummary()).toEqual(["Ben → Ann: 450,00 ₽"]);
     });
 
     it("updates the screen reader overview for the new bill", () => {
       const lunch: Bill = {
-        participants: [anna, boris],
+        participants: [ann, ben],
         expenses: [
           {
             id: "a",
-            payerId: anna.id,
+            payerId: ann.id,
             amount: 70_000,
-            beneficiaryIds: [boris.id],
+            beneficiaryIds: [ben.id],
           },
           {
             id: "b",
-            payerId: boris.id,
+            payerId: ben.id,
             amount: 30_000,
-            beneficiaryIds: [anna.id],
+            beneficiaryIds: [ann.id],
           },
         ],
       };
       openCode(encodeBill(billWithDinner, "RUB"));
-      expect(readAnnouncement()).toBe("Итог: 1 перевод");
+      expect(readAnnouncement()).toBe(
+        RU.summary.announcement(`1 ${RU_TRANSFERS.one}`),
+      );
 
       changeAddressOnPage(
-        `/#${encodeBill({ participants: [anna], expenses: [] }, "RUB")}`,
+        `/#${encodeBill({ participants: [ann], expenses: [] }, "RUB")}`,
       );
-      expect(readAnnouncement()).toBe("Итог: трат пока нет");
+      expect(readAnnouncement()).toBe(RU.summary.announcementNoExpenses);
 
       changeAddressOnPage(`/#${encodeBill(lunch, "RUB")}`);
-      expect(readAnnouncement()).toBe("Итог: 1 перевод");
+      expect(readAnnouncement()).toBe(
+        RU.summary.announcement(`1 ${RU_TRANSFERS.one}`),
+      );
     });
 
     it("with a broken code the screen reader overview says there are no expenses", () => {
       openCode(encodeBill(billWithDinner, "RUB"));
-      expect(readAnnouncement()).toBe("Итог: 1 перевод");
+      expect(readAnnouncement()).toBe(
+        RU.summary.announcement(`1 ${RU_TRANSFERS.one}`),
+      );
 
       changeAddressOnPage("/#1.!!!");
 
-      expect(readAnnouncement()).toBe("Итог: трат пока нет");
+      expect(readAnnouncement()).toBe(RU.summary.announcementNoExpenses);
     });
 
     it("with a broken code shows the message and an empty bill", () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
 
       changeAddressOnPage("/#1.!!!");
 
@@ -1675,20 +1739,20 @@ describe("bill link", () => {
     });
   });
 
-  describe('"Поделиться"', () => {
+  describe('"Share" button', () => {
     it("copies the link of the current bill and says so", async () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
       writeText.mockResolvedValue(undefined);
       installClipboard(writeText);
       openAddress("/split-bill/");
-      addParticipant("Аня");
-      addParticipant("Боря");
+      addParticipant("Ann");
+      addParticipant("Ben");
       const code = encodeBill(
-        { participants: [anna, boris], expenses: [] },
+        { participants: [ann, ben], expenses: [] },
         "RUB",
       );
 
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
       await vi.waitFor(() => {
         expect(readShareMessage()).toBe(SHARE_COPIED_RU);
@@ -1703,9 +1767,9 @@ describe("bill link", () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
       writeText.mockResolvedValue(undefined);
       installClipboard(writeText);
-      addParticipant("Аня");
+      addParticipant("Ann");
 
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
       await vi.waitFor(() => {
         expect(readShareMessage()).toBe(SHARE_COPIED_RU);
@@ -1713,18 +1777,18 @@ describe("bill link", () => {
       const message = readShareSection().querySelector(".message");
       expect(message?.classList.contains("message-success")).toBe(true);
 
-      addParticipant("Боря");
+      addParticipant("Ben");
 
       expect(message?.classList.contains("message-success")).toBe(false);
     });
 
-    it('the clipboard answer after the bill changed does not show "Ссылка скопирована"', async () => {
+    it("the clipboard answer after the bill changed does not show the success message", async () => {
       const clipboard = createDeferredWrite();
       installClipboard(clipboard.writeText);
-      addParticipant("Аня");
-      findButton("Поделиться").click();
+      addParticipant("Ann");
+      findButton(RU.share.button).click();
 
-      addParticipant("Боря");
+      addParticipant("Ben");
       clipboard.resolve();
       await clipboard.settled;
 
@@ -1735,10 +1799,10 @@ describe("bill link", () => {
     it("the clipboard refusal after the bill changed does not show the field with the old link", async () => {
       const clipboard = createDeferredWrite();
       installClipboard(clipboard.writeText);
-      addParticipant("Аня");
-      findButton("Поделиться").click();
+      addParticipant("Ann");
+      findButton(RU.share.button).click();
 
-      addParticipant("Боря");
+      addParticipant("Ben");
       clipboard.reject();
       await clipboard.settled;
 
@@ -1747,9 +1811,9 @@ describe("bill link", () => {
     });
 
     it("without a clipboard shows the field with the link", () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
 
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
       expect(readShareMessage()).toBe(SHARE_COPY_MANUALLY_RU);
       expect(isLinkFieldHidden()).toBe(false);
@@ -1761,9 +1825,9 @@ describe("bill link", () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
       writeText.mockRejectedValue(new Error("Access denied"));
       installClipboard(writeText);
-      addParticipant("Аня");
+      addParticipant("Ann");
 
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
       await vi.waitFor(() => {
         expect(readShareMessage()).toBe(SHARE_COPY_MANUALLY_RU);
@@ -1777,13 +1841,13 @@ describe("bill link", () => {
       writeText.mockResolvedValueOnce(undefined);
       writeText.mockRejectedValueOnce(new Error("Access denied"));
       installClipboard(writeText);
-      addParticipant("Аня");
-      findButton("Поделиться").click();
+      addParticipant("Ann");
+      findButton(RU.share.button).click();
       await vi.waitFor(() => {
         expect(readShareMessage()).toBe(SHARE_COPIED_RU);
       });
 
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
       await vi.waitFor(() => {
         expect(readShareMessage()).toBe(SHARE_COPY_MANUALLY_RU);
@@ -1793,7 +1857,7 @@ describe("bill link", () => {
     });
 
     it("the link of an empty bill opens as an empty bill", () => {
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
       const link = new URL(readLinkField().value);
       const result = decodeBill(link.hash.slice(1));
@@ -1808,12 +1872,12 @@ describe("bill link", () => {
       const writeText = vi.fn<(text: string) => Promise<void>>();
       writeText.mockResolvedValue(undefined);
       installClipboard(writeText);
-      addParticipant("Аня");
+      addParticipant("Ann");
       const message = readShareSection().querySelector(".message");
       expect(message?.querySelector("svg")).toBeNull();
       expect(message?.textContent).toBe("");
 
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
       await vi.waitFor(() => {
         expect(readShareMessage()).toBe(SHARE_COPIED_RU);
@@ -1824,17 +1888,17 @@ describe("bill link", () => {
     });
 
     it("shows no check mark with the fallback text", () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
 
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
       expect(readShareSection().querySelector(".message svg")).toBeNull();
     });
 
     it("on the next render resets the message and hides the field", () => {
-      findButton("Поделиться").click();
+      findButton(RU.share.button).click();
 
-      addParticipant("Аня");
+      addParticipant("Ann");
 
       expect(readShareMessage()).toBe("");
       expect(isLinkFieldHidden()).toBe(true);
@@ -1848,21 +1912,21 @@ describe("share links from the previous version", () => {
 
     remountApp();
 
-    expect(readParticipantNames()).toEqual(["Аня", "Боря", "Вера", "Гоша"]);
+    expect(readParticipantNames()).toEqual(["Ann", "Ben", "Clara", "Dan"]);
     expect(readExpenses()).toEqual([
-      "Аня — 4 800,00 ₽, за всех",
-      "Боря — 1 250,50 ₽, за: Аня, Боря, Вера",
-      "Вера — 600,00 ₽, за: Вера, Гоша",
+      `Ann — 4 800,00 ₽, ${RU.expenses.forEveryone}`,
+      `Ben — 1 250,50 ₽, ${RU.expenses.forBeneficiaries(["Ann", "Ben", "Clara"])}`,
+      `Clara — 600,00 ₽, ${RU.expenses.forBeneficiaries(["Clara", "Dan"])}`,
     ]);
     expect(readSummary()).toEqual([
-      "Боря → Аня: 366,33 ₽",
-      "Вера → Аня: 1 316,83 ₽",
-      "Гоша → Аня: 1 500,00 ₽",
+      "Ben → Ann: 366,33 ₽",
+      "Clara → Ann: 1 316,83 ₽",
+      "Dan → Ann: 1 500,00 ₽",
     ]);
     expect(readTexts(".page-header .overview-item")).toEqual([
-      "4 участника",
-      "3 траты",
-      "потрачено 6 650,50 ₽",
+      `4 ${RU_PARTICIPANTS.few}`,
+      `3 ${RU_EXPENSES.few}`,
+      RU.header.spent("6 650,50 ₽"),
     ]);
     expect(root.querySelector<HTMLElement>(".notice")?.hidden).toBe(true);
   });
@@ -1873,14 +1937,14 @@ describe("share links from the previous version", () => {
     remountApp("en");
 
     expect(readExpenses(ENGLISH_SECTIONS.expenses)).toEqual([
-      "Аня — $4,800.00, for everyone",
-      "Боря — $1,250.50, for: Аня, Боря, Вера",
-      "Вера — $600.00, for: Вера, Гоша",
+      "Ann — $4,800.00, for everyone",
+      "Ben — $1,250.50, for: Ann, Ben, Clara",
+      "Clara — $600.00, for: Clara, Dan",
     ]);
     expect(readSummary(ENGLISH_SECTIONS.summary)).toEqual([
-      "Боря → Аня: $366.33",
-      "Вера → Аня: $1,316.83",
-      "Гоша → Аня: $1,500.00",
+      "Ben → Ann: $366.33",
+      "Clara → Ann: $1,316.83",
+      "Dan → Ann: $1,500.00",
     ]);
     expect(readTexts(".page-header .overview-item")).toEqual([
       "4 participants",
@@ -2124,16 +2188,16 @@ describe("currency of an opened bill on the Russian page", () => {
     openUsdLink();
 
     expect(readExpenses()).toEqual([
-      "Ann — 123,45 $, за всех",
-      "Bob — 5,00 $, за: Bob",
+      `Ann — 123,45 $, ${RU.expenses.forEveryone}`,
+      `Bob — 5,00 $, ${RU.expenses.forBeneficiaries(["Bob"])}`,
     ]);
-    expect(findInput("Сколько, $")).toBeDefined();
+    expect(findInput(RU.expenses.amountLabel("$"))).toBeDefined();
   });
 
   it("keeps the currency of the link in the address after the bill is edited", () => {
     openUsdLink();
 
-    addParticipant("Вера");
+    addParticipant("Clara");
 
     const result = decodeBill(location.hash.slice(1));
     expect(result).toMatchObject({ kind: "decoded", currency: "USD" });
@@ -2148,19 +2212,19 @@ describe("currency of an opened bill on the Russian page", () => {
     changeAddressOnPage(address);
 
     expect(readTexts(".page-header .overview-item")).toEqual([
-      "0 участников",
-      "0 трат",
-      "потрачено 0,00 ₽",
+      `0 ${RU_PARTICIPANTS.many}`,
+      `0 ${RU_EXPENSES.many}`,
+      RU.header.spent("0,00 ₽"),
     ]);
-    expect(findInput("Сколько, ₽")).toBeDefined();
+    expect(findInput(RU.expenses.amountLabel("₽"))).toBeDefined();
   });
 
   it("writes the currency of the link into the Share link", () => {
     openUsdLink();
 
-    findButton("Поделиться").click();
+    findButton(RU.share.button).click();
 
-    const shareLink = new URL(findInput("Ссылка на счёт").value);
+    const shareLink = new URL(findInput(RU.share.linkLabel).value);
     const result = decodeBill(shareLink.hash.slice(1));
     expect(result).toMatchObject({ kind: "decoded", currency: "USD" });
   });
@@ -2171,8 +2235,8 @@ describe("currency of an opened bill on the Russian page", () => {
     remountApp("ru");
 
     expect(readExpenses()).toEqual([
-      "Ann — 123,45 ₽, за всех",
-      "Bob — 5,00 ₽, за: Bob",
+      `Ann — 123,45 ₽, ${RU.expenses.forEveryone}`,
+      `Bob — 5,00 ₽, ${RU.expenses.forBeneficiaries(["Bob"])}`,
     ]);
   });
 });
@@ -2210,13 +2274,13 @@ describe("currency", () => {
       expect(readOptionTexts(select)).toEqual(["US dollar", "Russian ruble"]);
     });
 
-    it("is named Валюта on the Russian page", () => {
+    it("has the Russian label on the Russian page", () => {
       const select = findCurrencySelect();
 
-      expect(select).toBe(findInput("Валюта"));
+      expect(select).toBe(findInput(RU.currencyLabel));
       expect(readOptionTexts(select)).toEqual([
-        "Доллар США",
-        "Российский рубль",
+        RU.currencyNames.USD,
+        RU.currencyNames.RUB,
       ]);
     });
   });
@@ -2231,7 +2295,7 @@ describe("currency", () => {
 
     it("is the ruble on the Russian page", () => {
       expect(findCurrencySelect().value).toBe("RUB");
-      expect(findInput("Сколько, ₽")).toBeDefined();
+      expect(findInput(RU.expenses.amountLabel("₽"))).toBeDefined();
     });
 
     it("follows the currency of an opened link", () => {
@@ -2311,13 +2375,15 @@ describe("currency", () => {
 
   describe("choosing on the Russian page", () => {
     it("changes the amounts and the label on the Russian page the same way", () => {
-      addParticipant("Аня");
+      addParticipant("Ann");
       addExpense("900");
 
       chooseCurrency("USD");
 
-      expect(readExpenses()).toEqual(["Аня — 900,00 $, за всех"]);
-      expect(findInput("Сколько, $")).toBeDefined();
+      expect(readExpenses()).toEqual([
+        `Ann — 900,00 $, ${RU.expenses.forEveryone}`,
+      ]);
+      expect(findInput(RU.expenses.amountLabel("$"))).toBeDefined();
       expect(readAddressCurrency()).toBe("USD");
     });
   });
@@ -2432,7 +2498,7 @@ describe("language switch", () => {
 
       const link = findLanguageLink();
 
-      expect(link.textContent).toBe("Русский");
+      expect(link.textContent).toBe(LOCALE_DEFINITIONS.ru.ownName);
       expect(link.getAttribute("lang")).toBe("ru");
       expect(link.getAttribute("hreflang")).toBe("ru");
       expect(link.getAttribute("href")).toBe("/ru/");
@@ -2499,8 +2565,10 @@ describe("language switch", () => {
       followLanguageLink("ru");
 
       expect(readParticipantNames()).toEqual(["Ann", "Bob"]);
-      expect(readExpenses()).toEqual(["Ann — 900,00 $, за всех"]);
-      expect(findInput("Сколько, $")).toBeDefined();
+      expect(readExpenses()).toEqual([
+        `Ann — 900,00 $, ${RU.expenses.forEveryone}`,
+      ]);
+      expect(findInput(RU.expenses.amountLabel("$"))).toBeDefined();
     });
 
     it("keeps a bill in rubles set up by a link on the English page", () => {
@@ -2512,13 +2580,13 @@ describe("language switch", () => {
 
       expect(readParticipantNames()).toEqual(["Ann", "Bob", "Cat"]);
       expect(readExpenses()).toEqual([
-        "Ann — 123,45 ₽, за: Ann, Bob",
-        "Bob — 5,00 ₽, за: Bob",
+        `Ann — 123,45 ₽, ${RU.expenses.forBeneficiaries(["Ann", "Bob"])}`,
+        `Bob — 5,00 ₽, ${RU.expenses.forBeneficiaries(["Bob"])}`,
       ]);
       expect(readTexts(".page-header .overview-item")).toEqual([
-        "3 участника",
-        "2 траты",
-        "потрачено 128,45 ₽",
+        `3 ${RU_PARTICIPANTS.few}`,
+        `2 ${RU_EXPENSES.few}`,
+        RU.header.spent("128,45 ₽"),
       ]);
     });
 
@@ -2540,14 +2608,14 @@ describe("language switch", () => {
       followLanguageLink("ru");
 
       expect(readTexts(".page-header .overview-item")).toEqual([
-        "0 участников",
-        "0 трат",
-        "потрачено 0,00 ₽",
+        `0 ${RU_PARTICIPANTS.many}`,
+        `0 ${RU_EXPENSES.many}`,
+        RU.header.spent("0,00 ₽"),
       ]);
     });
   });
 });
 
 function invalidBillCode(): string {
-  return `1.${encodeBase64Url('[["Аня","аня"],[]]')}`;
+  return `1.${encodeBase64Url('[["Ann","ann"],[]]')}`;
 }

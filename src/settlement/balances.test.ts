@@ -7,12 +7,12 @@ import {
 } from "../bill/bill";
 import { calculateBalances } from "./balances";
 
-const anna: Participant = { id: "anna", name: "Аня" };
-const boris: Participant = { id: "boris", name: "Боря" };
-const vera: Participant = { id: "vera", name: "Вера" };
+const ann: Participant = { id: "ann", name: "Ann" };
+const ben: Participant = { id: "ben", name: "Ben" };
+const clara: Participant = { id: "clara", name: "Clara" };
 
 function createBill(expenses: readonly Expense[]): Bill {
-  return { participants: [anna, boris, vera], expenses };
+  return { participants: [ann, ben, clara], expenses };
 }
 
 function sumBalances(bill: Bill): number {
@@ -25,9 +25,9 @@ function sumBalances(bill: Bill): number {
 describe("calculateBalances", () => {
   it("gives zero balances in participant order without expenses", () => {
     expect(calculateBalances(createBill([]))).toEqual([
-      { participantId: "anna", paid: 0, share: 0, amount: 0 },
-      { participantId: "boris", paid: 0, share: 0, amount: 0 },
-      { participantId: "vera", paid: 0, share: 0, amount: 0 },
+      { participantId: "ann", paid: 0, share: 0, amount: 0 },
+      { participantId: "ben", paid: 0, share: 0, amount: 0 },
+      { participantId: "clara", paid: 0, share: 0, amount: 0 },
     ]);
   });
 
@@ -35,16 +35,16 @@ describe("calculateBalances", () => {
     const bill = createBill([
       {
         id: "1",
-        payerId: "anna",
+        payerId: "ann",
         amount: 90_000,
-        beneficiaryIds: ["anna", "boris", "vera"],
+        beneficiaryIds: ["ann", "ben", "clara"],
       },
     ]);
 
     expect(calculateBalances(bill)).toEqual([
-      { participantId: "anna", paid: 90_000, share: 30_000, amount: 60_000 },
-      { participantId: "boris", paid: 0, share: 30_000, amount: -30_000 },
-      { participantId: "vera", paid: 0, share: 30_000, amount: -30_000 },
+      { participantId: "ann", paid: 90_000, share: 30_000, amount: 60_000 },
+      { participantId: "ben", paid: 0, share: 30_000, amount: -30_000 },
+      { participantId: "clara", paid: 0, share: 30_000, amount: -30_000 },
     ]);
   });
 
@@ -52,16 +52,16 @@ describe("calculateBalances", () => {
     const bill = createBill([
       {
         id: "1",
-        payerId: "boris",
+        payerId: "ben",
         amount: 5_000,
-        beneficiaryIds: ["anna", "boris"],
+        beneficiaryIds: ["ann", "ben"],
       },
     ]);
 
     expect(calculateBalances(bill)).toEqual([
-      { participantId: "anna", paid: 0, share: 2_500, amount: -2_500 },
-      { participantId: "boris", paid: 5_000, share: 2_500, amount: 2_500 },
-      { participantId: "vera", paid: 0, share: 0, amount: 0 },
+      { participantId: "ann", paid: 0, share: 2_500, amount: -2_500 },
+      { participantId: "ben", paid: 5_000, share: 2_500, amount: 2_500 },
+      { participantId: "clara", paid: 0, share: 0, amount: 0 },
     ]);
   });
 
@@ -69,9 +69,9 @@ describe("calculateBalances", () => {
     const bill = createBill([
       {
         id: "1",
-        payerId: "anna",
+        payerId: "ann",
         amount: 10_000,
-        beneficiaryIds: ["anna", "boris", "vera"],
+        beneficiaryIds: ["ann", "ben", "clara"],
       },
     ]);
 
@@ -84,21 +84,21 @@ describe("calculateBalances", () => {
     const bill = createBill([
       {
         id: "1",
-        payerId: "anna",
+        payerId: "ann",
         amount: 10_001,
-        beneficiaryIds: ["anna", "boris", "vera"],
+        beneficiaryIds: ["ann", "ben", "clara"],
       },
       {
         id: "2",
-        payerId: "vera",
+        payerId: "clara",
         amount: 777,
-        beneficiaryIds: ["boris", "vera"],
+        beneficiaryIds: ["ben", "clara"],
       },
       {
         id: "3",
-        payerId: "boris",
+        payerId: "ben",
         amount: 1,
-        beneficiaryIds: ["anna", "vera"],
+        beneficiaryIds: ["ann", "clara"],
       },
     ]);
 
@@ -109,21 +109,21 @@ describe("calculateBalances", () => {
     const bill = createBill([
       {
         id: "1",
-        payerId: "anna",
+        payerId: "ann",
         amount: 10_001,
-        beneficiaryIds: ["anna", "boris", "vera"],
+        beneficiaryIds: ["ann", "ben", "clara"],
       },
       {
         id: "2",
-        payerId: "anna",
+        payerId: "ann",
         amount: 777,
-        beneficiaryIds: ["boris", "vera"],
+        beneficiaryIds: ["ben", "clara"],
       },
       {
         id: "3",
-        payerId: "boris",
+        payerId: "ben",
         amount: 1,
-        beneficiaryIds: ["anna", "vera"],
+        beneficiaryIds: ["ann", "clara"],
       },
     ]);
 
@@ -137,9 +137,9 @@ describe("calculateBalances", () => {
     });
 
     it("the amount paid by a payer equals the sum of their expenses", () => {
-      const annaBalance = calculateBalances(bill)[0];
+      const annBalance = calculateBalances(bill)[0];
 
-      expect(annaBalance?.paid).toBe(10_001 + 777);
+      expect(annBalance?.paid).toBe(10_001 + 777);
     });
 
     it("each participant's outcome equals paid minus share", () => {

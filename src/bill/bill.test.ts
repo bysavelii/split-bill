@@ -18,15 +18,15 @@ import {
   type Participant,
 } from "./bill";
 
-const anna: Participant = { id: "anna", name: "Аня" };
-const boris: Participant = { id: "boris", name: "Боря" };
-const vera: Participant = { id: "vera", name: "Вера" };
+const ann: Participant = { id: "ann", name: "Ann" };
+const ben: Participant = { id: "ben", name: "Ben" };
+const clara: Participant = { id: "clara", name: "Clara" };
 
 const dinner: Expense = {
   id: "dinner",
-  payerId: anna.id,
+  payerId: ann.id,
   amount: 90_000,
-  beneficiaryIds: [anna.id, boris.id],
+  beneficiaryIds: [ann.id, ben.id],
 };
 
 function freezeBill(bill: Bill): Bill {
@@ -37,25 +37,25 @@ function freezeBill(bill: Bill): Bill {
 
 describe("changing the bill", () => {
   it("addParticipant returns a new bill and leaves the original unchanged", () => {
-    const original = freezeBill({ participants: [anna], expenses: [] });
+    const original = freezeBill({ participants: [ann], expenses: [] });
 
-    const changed = addParticipant(original, boris);
+    const changed = addParticipant(original, ben);
 
-    expect(changed.participants).toEqual([anna, boris]);
-    expect(original.participants).toEqual([anna]);
+    expect(changed.participants).toEqual([ann, ben]);
+    expect(original.participants).toEqual([ann]);
   });
 
   it("removeParticipant returns a new bill and leaves the original unchanged", () => {
-    const original = freezeBill({ participants: [anna, boris], expenses: [] });
+    const original = freezeBill({ participants: [ann, ben], expenses: [] });
 
-    const changed = removeParticipant(original, anna.id);
+    const changed = removeParticipant(original, ann.id);
 
-    expect(changed.participants).toEqual([boris]);
-    expect(original.participants).toEqual([anna, boris]);
+    expect(changed.participants).toEqual([ben]);
+    expect(original.participants).toEqual([ann, ben]);
   });
 
   it("addExpense returns a new bill and leaves the original unchanged", () => {
-    const original = freezeBill({ participants: [anna, boris], expenses: [] });
+    const original = freezeBill({ participants: [ann, ben], expenses: [] });
 
     const changed = addExpense(original, dinner);
 
@@ -65,7 +65,7 @@ describe("changing the bill", () => {
 
   it("removeExpense returns a new bill and leaves the original unchanged", () => {
     const original = freezeBill({
-      participants: [anna, boris],
+      participants: [ann, ben],
       expenses: [dinner],
     });
 
@@ -77,7 +77,7 @@ describe("changing the bill", () => {
 });
 
 describe("findNameProblem", () => {
-  const bill = addParticipant(EMPTY_BILL, anna);
+  const bill = addParticipant(EMPTY_BILL, ann);
 
   it("finds an empty name", () => {
     expect(findNameProblem(bill, "")).toBe("empty");
@@ -88,17 +88,17 @@ describe("findNameProblem", () => {
   });
 
   it("finds a duplicate in another case and with spaces at the edges", () => {
-    expect(findNameProblem(bill, " аНЯ ")).toBe("duplicate");
+    expect(findNameProblem(bill, " aNN ")).toBe("duplicate");
   });
 
   it("finds a name that is too long", () => {
-    const name = "я".repeat(MAX_NAME_LENGTH + 1);
+    const name = "ω".repeat(MAX_NAME_LENGTH + 1);
 
     expect(findNameProblem(bill, name)).toBe("tooLong");
   });
 
   it("accepts a name of the maximum length, spaces at the edges do not count", () => {
-    const name = ` ${"я".repeat(MAX_NAME_LENGTH)} `;
+    const name = ` ${"ω".repeat(MAX_NAME_LENGTH)} `;
 
     expect(findNameProblem(bill, name)).toBeUndefined();
   });
@@ -110,38 +110,38 @@ describe("findNameProblem", () => {
   });
 
   it("accepts a new name", () => {
-    expect(findNameProblem(bill, "Боря")).toBeUndefined();
+    expect(findNameProblem(bill, "Ben")).toBeUndefined();
   });
 });
 
 describe("isParticipantInExpenses", () => {
   const bill: Bill = {
-    participants: [anna, boris, vera],
-    expenses: [{ ...dinner, beneficiaryIds: [boris.id] }],
+    participants: [ann, ben, clara],
+    expenses: [{ ...dinner, beneficiaryIds: [ben.id] }],
   };
 
   it("counts the payer as taking part in the expenses", () => {
-    expect(isParticipantInExpenses(bill, anna.id)).toBe(true);
+    expect(isParticipantInExpenses(bill, ann.id)).toBe(true);
   });
 
   it("counts the recipient as taking part in the expenses", () => {
-    expect(isParticipantInExpenses(bill, boris.id)).toBe(true);
+    expect(isParticipantInExpenses(bill, ben.id)).toBe(true);
   });
 
   it("does not count an uninvolved participant as taking part in the expenses", () => {
-    expect(isParticipantInExpenses(bill, vera.id)).toBe(false);
+    expect(isParticipantInExpenses(bill, clara.id)).toBe(false);
   });
 });
 
 describe("getParticipantName", () => {
   it("returns the participant name", () => {
     expect(
-      getParticipantName({ participants: [anna], expenses: [] }, anna.id),
-    ).toBe("Аня");
+      getParticipantName({ participants: [ann], expenses: [] }, ann.id),
+    ).toBe("Ann");
   });
 
   it("reports a missing participant", () => {
-    expect(() => getParticipantName(EMPTY_BILL, "нет")).toThrow(
+    expect(() => getParticipantName(EMPTY_BILL, "missing")).toThrow(
       "Participant not found",
     );
   });
@@ -154,10 +154,10 @@ describe("calculateTotalSpent", () => {
 
   it("adds up the amounts of all expenses", () => {
     const bill: Bill = {
-      participants: [anna, boris],
+      participants: [ann, ben],
       expenses: [
         dinner,
-        { ...dinner, id: "taxi", payerId: boris.id, amount: 25_050 },
+        { ...dinner, id: "taxi", payerId: ben.id, amount: 25_050 },
       ],
     };
 
@@ -172,7 +172,7 @@ describe("isTotalSpentWithinLimit", () => {
       id: `expense-${String(index)}`,
       amount,
     }));
-    return { participants: [anna, boris], expenses };
+    return { participants: [ann, ben], expenses };
   }
 
   it("accepts an empty bill", () => {
@@ -208,20 +208,20 @@ describe("findNamesProblem", () => {
   });
 
   it("finds an empty name", () => {
-    expect(findNamesProblem(["Аня", "   "])).toBe("empty");
+    expect(findNamesProblem(["Ann", "   "])).toBe("empty");
   });
 
   it("finds a repeat ignoring case and spaces at the edges", () => {
-    expect(findNamesProblem(["Аня", "Боря", " аНЯ "])).toBe("duplicate");
+    expect(findNamesProblem(["Άννα", "Ben", " ΆΝΝΑ "])).toBe("duplicate");
   });
 
   it("finds a name that is too long", () => {
-    const names = ["Аня", "я".repeat(MAX_NAME_LENGTH + 1)];
+    const names = ["Ann", "ω".repeat(MAX_NAME_LENGTH + 1)];
 
     expect(findNamesProblem(names)).toBe("tooLong");
   });
 
   it("accepts a list of different names", () => {
-    expect(findNamesProblem(["Аня", "Боря", "Вера"])).toBeUndefined();
+    expect(findNamesProblem(["Ann", "Ben", "Clara"])).toBeUndefined();
   });
 });

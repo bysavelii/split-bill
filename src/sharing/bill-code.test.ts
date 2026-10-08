@@ -18,9 +18,9 @@ import {
   type BillCodeError,
 } from "./bill-code";
 
-const anna = { id: "anna-uuid", name: "Аня" };
-const boris = { id: "boris-uuid", name: "Боря" };
-const vera = { id: "vera-uuid", name: "Вера" };
+const ann = { id: "ann-uuid", name: "Ann" };
+const ben = { id: "ben-uuid", name: "Ben" };
+const clara = { id: "clara-uuid", name: "Clara" };
 
 /** A bill without identifiers: used to compare bills "up to id". */
 function describeWithoutIds(bill: Bill): unknown {
@@ -88,40 +88,40 @@ describe("round trip of encodeBill and decodeBill", () => {
 
   it("participants and expenses with part of the recipients in a non-trivial order", () => {
     expectRoundTrip({
-      participants: [anna, boris, vera],
+      participants: [ann, ben, clara],
       expenses: [
         {
           id: "taxi",
-          payerId: boris.id,
+          payerId: ben.id,
           amount: 12_345,
-          beneficiaryIds: [vera.id, anna.id],
+          beneficiaryIds: [clara.id, ann.id],
         },
         {
           id: "dinner",
-          payerId: anna.id,
+          payerId: ann.id,
           amount: 90_000,
-          beneficiaryIds: [anna.id, boris.id, vera.id],
+          beneficiaryIds: [ann.id, ben.id, clara.id],
         },
         {
           id: "coffee",
-          payerId: vera.id,
+          payerId: clara.id,
           amount: 1,
-          beneficiaryIds: [vera.id],
+          beneficiaryIds: [clara.id],
         },
       ],
     });
   });
 
   it.each([
-    "Аня",
+    "Άννα",
     "👩‍👩‍👧",
-    "<b>Ли</b>",
-    'Лёша "Лёха"',
-    "Борис\\Глеб",
-    "А.Б.",
+    "<b>Li</b>",
+    'Zoë "Zo"',
+    "Ben\\Dan",
+    "A.B.",
     "#1",
     "100%",
-    "Анна  Мария",
+    "Anna  Maria",
   ])("name %j", (name) => {
     const participant = { id: "someone", name };
     expectRoundTrip({
@@ -139,20 +139,20 @@ describe("round trip of encodeBill and decodeBill", () => {
 
   it("the largest safe amount", () => {
     expectRoundTrip({
-      participants: [anna],
+      participants: [ann],
       expenses: [
         {
           id: "huge",
-          payerId: anna.id,
+          payerId: ann.id,
           amount: Number.MAX_SAFE_INTEGER,
-          beneficiaryIds: [anna.id],
+          beneficiaryIds: [ann.id],
         },
       ],
     });
   });
 
   it.each([
-    ["Cyrillic", "я"],
+    ["Greek", "ω"],
     ["emoji", "😀"],
   ])("name of the maximum length: %s", (_title, symbol) => {
     const name = symbol.repeat(MAX_NAME_LENGTH);
@@ -164,14 +164,11 @@ describe("round trip of encodeBill and decodeBill", () => {
   });
 
   it.each(CURRENCIES)("keeps the currency %s", (currency) => {
-    expectRoundTrip({ participants: [anna, boris], expenses: [] }, currency);
+    expectRoundTrip({ participants: [ann, ben], expenses: [] }, currency);
   });
 
   it("the code consists of the version and base64url characters", () => {
-    const code = encodeBill(
-      { participants: [anna, boris], expenses: [] },
-      "USD",
-    );
+    const code = encodeBill({ participants: [ann, ben], expenses: [] }, "USD");
 
     expect(code).toMatch(/^2\.[A-Za-z0-9_-]*$/u);
   });
@@ -179,12 +176,12 @@ describe("round trip of encodeBill and decodeBill", () => {
   it("does not change a frozen bill", () => {
     const expense = {
       id: "dinner",
-      payerId: anna.id,
+      payerId: ann.id,
       amount: 100,
-      beneficiaryIds: Object.freeze([anna.id, boris.id]),
+      beneficiaryIds: Object.freeze([ann.id, ben.id]),
     };
     const bill: Bill = Object.freeze({
-      participants: Object.freeze([anna, boris]),
+      participants: Object.freeze([ann, ben]),
       expenses: Object.freeze([Object.freeze(expense)]),
     });
 
@@ -193,13 +190,13 @@ describe("round trip of encodeBill and decodeBill", () => {
 
   it("throws an error if an expense refers to an unknown participant", () => {
     const bill: Bill = {
-      participants: [anna],
+      participants: [ann],
       expenses: [
         {
           id: "ghost",
           payerId: "nobody",
           amount: 100,
-          beneficiaryIds: [anna.id],
+          beneficiaryIds: [ann.id],
         },
       ],
     };
@@ -210,19 +207,19 @@ describe("round trip of encodeBill and decodeBill", () => {
 
 describe("identifiers of a parsed bill", () => {
   const bill: Bill = {
-    participants: [anna, boris],
+    participants: [ann, ben],
     expenses: [
       {
         id: "first",
-        payerId: anna.id,
+        payerId: ann.id,
         amount: 100,
-        beneficiaryIds: [anna.id, boris.id],
+        beneficiaryIds: [ann.id, ben.id],
       },
       {
         id: "second",
-        payerId: boris.id,
+        payerId: ben.id,
         amount: 200,
-        beneficiaryIds: [boris.id],
+        beneficiaryIds: [ben.id],
       },
     ],
   };
@@ -298,7 +295,7 @@ describe("literal codes", () => {
 });
 
 describe("corrupted codes", () => {
-  const notJson = `1.${encodeBase64Url("не JSON")}`;
+  const notJson = `1.${encodeBase64Url("not JSON")}`;
   const invalidUtf8 = "1._w";
 
   it.each([
@@ -342,33 +339,33 @@ describe("invalid bill of the version without a currency", () => {
     ["number", 5],
     ["null", null],
     ["one element", [[]]],
-    ["extra element", [["Аня"], [], []]],
-    ["names are not an array", ["Аня", []]],
-    ["expenses are not an array", [["Аня"], "траты"]],
+    ["extra element", [["Ann"], [], []]],
+    ["names are not an array", ["Ann", []]],
+    ["expenses are not an array", [["Ann"], "expenses"]],
     ["name is not a string", [[1], []]],
-    ["name longer than the limit", [["я".repeat(MAX_NAME_LENGTH + 1)], []]],
+    ["name longer than the limit", [["ω".repeat(MAX_NAME_LENGTH + 1)], []]],
     ["empty name made of spaces", [["  "], []]],
-    ["names ignoring case", [["Аня", "аня"], []]],
-    ["expense is not an array", [["Аня"], ["трата"]]],
-    ["expense tuple of 2 elements", [["Аня"], [[0, 100]]]],
-    ["expense tuple of 4 elements", [["Аня"], [[0, 100, [0], 1]]]],
-    ["payer −1", [["Аня"], [[-1, 100, [0]]]]],
-    ["payer 1.5", [["Аня"], [[1.5, 100, [0]]]]],
-    ["payer as a string", [["Аня"], [["0", 100, [0]]]]],
-    ["payer out of range", [["Аня"], [[1, 100, [0]]]]],
-    ["amount 0", [["Аня"], [[0, 0, [0]]]]],
-    ["amount −1", [["Аня"], [[0, -1, [0]]]]],
-    ["amount 1.5", [["Аня"], [[0, 1.5, [0]]]]],
-    ["amount as a string", [["Аня"], [[0, "100", [0]]]]],
+    ["names ignoring case", [["Άννα", "άννα"], []]],
+    ["expense is not an array", [["Ann"], ["expense"]]],
+    ["expense tuple of 2 elements", [["Ann"], [[0, 100]]]],
+    ["expense tuple of 4 elements", [["Ann"], [[0, 100, [0], 1]]]],
+    ["payer −1", [["Ann"], [[-1, 100, [0]]]]],
+    ["payer 1.5", [["Ann"], [[1.5, 100, [0]]]]],
+    ["payer as a string", [["Ann"], [["0", 100, [0]]]]],
+    ["payer out of range", [["Ann"], [[1, 100, [0]]]]],
+    ["amount 0", [["Ann"], [[0, 0, [0]]]]],
+    ["amount −1", [["Ann"], [[0, -1, [0]]]]],
+    ["amount 1.5", [["Ann"], [[0, 1.5, [0]]]]],
+    ["amount as a string", [["Ann"], [[0, "100", [0]]]]],
     [
       "amount above the safe integer",
-      [["Аня"], [[0, Number.MAX_SAFE_INTEGER + 1, [0]]]],
+      [["Ann"], [[0, Number.MAX_SAFE_INTEGER + 1, [0]]]],
     ],
-    ["recipients are not an array", [["Аня"], [[0, 100, 0]]]],
-    ["empty recipients", [["Аня"], [[0, 100, []]]]],
-    ["recipients with a repeat", [["Аня"], [[0, 100, [0, 0]]]]],
-    ["recipient out of range", [["Аня"], [[0, 100, [0, 1]]]]],
-    ["recipient is not a number", [["Аня"], [[0, 100, ["0"]]]]],
+    ["recipients are not an array", [["Ann"], [[0, 100, 0]]]],
+    ["empty recipients", [["Ann"], [[0, 100, []]]]],
+    ["recipients with a repeat", [["Ann"], [[0, 100, [0, 0]]]]],
+    ["recipient out of range", [["Ann"], [[0, 100, [0, 1]]]]],
+    ["recipient is not a number", [["Ann"], [[0, 100, ["0"]]]]],
     ["expense without participants", [[], [validExpense]]],
     [
       "total of expenses above the safe integer",
@@ -398,7 +395,7 @@ describe("invalid bill of the version without a currency", () => {
   it("amount 1e400 is invalidBill", () => {
     const code = codeFromText(
       LEGACY_BILL_CODE_VERSION,
-      '[["Аня"],[[0,1e400,[0]]]]',
+      '[["Ann"],[[0,1e400,[0]]]]',
     );
 
     expect(readError(code).kind).toBe("invalidBill");
@@ -417,15 +414,15 @@ describe("invalid bill of the version without a currency", () => {
 
 describe("invalid bill of the current version", () => {
   it.each([
-    ["missing currency", [["Аня"], []]],
-    ["unknown currency", [["Аня"], [], "EUR"]],
-    ["lowercase currency", [["Аня"], [], "usd"]],
-    ["currency is a number", [["Аня"], [], 840]],
-    ["currency is null", [["Аня"], [], null]],
-    ["currency is a list", [["Аня"], [], ["USD"]]],
-    ["tuple of 4 elements", [["Аня"], [], "USD", 0]],
-    ["currency before the bill", ["USD", ["Аня"], []]],
-    ["invalid expense with a valid currency", [["Аня"], [[0, 0, [0]]], "USD"]],
+    ["missing currency", [["Ann"], []]],
+    ["unknown currency", [["Ann"], [], "EUR"]],
+    ["lowercase currency", [["Ann"], [], "usd"]],
+    ["currency is a number", [["Ann"], [], 840]],
+    ["currency is null", [["Ann"], [], null]],
+    ["currency is a list", [["Ann"], [], ["USD"]]],
+    ["tuple of 4 elements", [["Ann"], [], "USD", 0]],
+    ["currency before the bill", ["USD", ["Ann"], []]],
+    ["invalid expense with a valid currency", [["Ann"], [[0, 0, [0]]], "USD"]],
   ])("%s — invalidBill", (_title, json) => {
     expect(readError(codeFromJson(json)).kind).toBe("invalidBill");
   });
@@ -474,7 +471,7 @@ function createRandom(seed: number): () => number {
 }
 
 const NAME_ALPHABET = Array.from(
-  "абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВ😀👩🎉🍕<>\"'\\/&%#?.=+ -_ñü漢字",
+  "αβγδεζηθικλμνξοπρστυφχψωΑΒΓ😀👩🎉🍕<>\"'\\/&%#?.=+ -_ñü漢字",
 );
 const MAX_RANDOM_PARTICIPANTS = 8;
 const MAX_RANDOM_EXPENSES = 10;
@@ -541,7 +538,7 @@ describe("encoding properties on pseudo-random bills", () => {
 
   it("mutations of a valid code do not throw and give a valid bill or an error", () => {
     const random = createRandom(777);
-    const alphabet = Array.from("AZaz09-_.=+/ %я😀");
+    const alphabet = Array.from("AZaz09-_.=+/ %ω😀");
 
     for (let iteration = 0; iteration < ITERATIONS; iteration += 1) {
       const code = encodeBill(

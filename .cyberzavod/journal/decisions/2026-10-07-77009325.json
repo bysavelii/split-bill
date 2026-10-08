@@ -8,7 +8,7 @@
   },
   "type": "decision",
   "data": {
-    "title": "Суммы хранятся в копейках целыми числами; остаток при делении траты достаётся первым получателям в порядке участников",
-    "description": "Без ошибок float, сумма долей сходится до копейки, результат детерминирован"
+    "title": "Amounts are stored in kopecks as integers; the remainder when dividing an expense goes to the first recipients in the order of the participants",
+    "description": "No float errors, the shares add up to the kopeck, the result is deterministic"
   }
 }

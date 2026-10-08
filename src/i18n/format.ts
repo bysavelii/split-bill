@@ -59,7 +59,7 @@ export function formatNumber(value: number, locale: Locale): string {
   return findNumberFormat(locale).format(value);
 }
 
-/** A number with the word in the right form: "2 transfers", "2 перевода", "5 человек". */
+/** A number with the word in the right form: "1 transfer", "2 transfers"; Russian needs the forms one, few and many. */
 export function formatCount(
   count: number,
   forms: PluralForms,

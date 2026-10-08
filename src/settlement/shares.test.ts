@@ -44,16 +44,16 @@ describe("hasUnevenSplit", () => {
   function createBill(amount: number): Bill {
     return {
       participants: [
-        { id: "anna", name: "Аня" },
-        { id: "boris", name: "Боря" },
-        { id: "vera", name: "Вера" },
+        { id: "ann", name: "Ann" },
+        { id: "ben", name: "Ben" },
+        { id: "clara", name: "Clara" },
       ],
       expenses: [
         {
           id: "1",
-          payerId: "anna",
+          payerId: "ann",
           amount,
-          beneficiaryIds: ["anna", "boris", "vera"],
+          beneficiaryIds: ["ann", "ben", "clara"],
         },
       ],
     };

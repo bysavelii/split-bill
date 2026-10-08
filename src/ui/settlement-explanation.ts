@@ -20,7 +20,7 @@ export interface TransferCountFacts {
   readonly isMinimal: boolean;
 }
 
-/** The number of transfers with the word in the right form: "1 transfer", "2 перевода", "5 переводов". */
+/** The number of transfers with the word in the right form: "1 transfer", "2 transfers"; Russian needs the forms one, few and many. */
 export function formatTransferCount(
   count: number,
   localization: LocaleContextValue,
