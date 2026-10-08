@@ -23,20 +23,15 @@ function findInput(labelText: string): HTMLInputElement {
   return input;
 }
 
-function findButton(text: string): HTMLButtonElement {
+/** Кнопка по доступному имени: `aria-label`, а если его нет — видимый текст. */
+function findButton(name: string): HTMLButtonElement {
   const button = [...root.querySelectorAll("button")].find(
-    (candidate) => normalize(candidate.textContent) === text,
+    (candidate) =>
+      normalize(
+        candidate.getAttribute("aria-label") ?? candidate.textContent,
+      ) === name,
   );
-  if (button === undefined) throw new Error(`Не найдена кнопка «${text}»`);
-  return button;
-}
-
-function findByLabel(ariaLabel: string): HTMLButtonElement {
-  const button = root.querySelector<HTMLButtonElement>(
-    `[aria-label="${ariaLabel}"]`,
-  );
-  if (button === null)
-    throw new Error(`Не найден элемент с aria-label «${ariaLabel}»`);
+  if (button === undefined) throw new Error(`Не найдена кнопка «${name}»`);
   return button;
 }
 
@@ -130,12 +125,7 @@ function readRemoveExpenseLabels(): string[] {
 }
 
 function findRemoveExpenseButton(description: string): HTMLButtonElement {
-  const label = `Удалить трату: ${description}`;
-  const button = [...root.querySelectorAll("button")].find(
-    (candidate) => normalize(candidate.getAttribute("aria-label")) === label,
-  );
-  if (button === undefined) throw new Error(`Не найдена кнопка «${label}»`);
-  return button;
+  return findButton(`Удалить трату: ${description}`);
 }
 
 function readBreakdown(): string[] {
@@ -591,7 +581,7 @@ describe("ошибки ввода", () => {
     addParticipant("Боря");
     addExpense("100");
 
-    findByLabel("Удалить участника Боря").click();
+    findButton("Удалить участника Боря").click();
 
     expect(readParticipantsMessage()).toBe(
       "Нельзя удалить Боря: есть траты с этим участником. Сначала удалите их",
@@ -605,7 +595,7 @@ describe("ошибки ввода", () => {
   it("удаляет участника без трат", () => {
     addParticipant("Аня");
 
-    findByLabel("Удалить участника Аня").click();
+    findButton("Удалить участника Аня").click();
 
     expect(readTexts("section:nth-of-type(1) li")).toEqual([]);
   });
@@ -623,7 +613,7 @@ describe("ошибки ввода", () => {
     addParticipants("Аня", "Боря");
     selectPayer("Боря");
 
-    findByLabel("Удалить участника Боря").click();
+    findButton("Удалить участника Боря").click();
     addExpense("100");
 
     expect(root.querySelector("select")?.selectedOptions[0]?.text).toBe("Аня");
@@ -786,7 +776,7 @@ describe("ссылка на счёт", () => {
 
     it("после удаления последнего участника записывает код пустого счёта", () => {
       addParticipant("Аня");
-      findByLabel("Удалить участника Аня").click();
+      findButton("Удалить участника Аня").click();
 
       expect(location.hash).toBe(
         `#${encodeBill({ participants: [], expenses: [] })}`,
@@ -911,7 +901,7 @@ describe("ссылка на счёт", () => {
     it("«Закрыть» прячет сообщение и ничего больше не меняет", () => {
       openCode("1.!!!");
 
-      findByLabel("Закрыть сообщение").click();
+      findButton("Закрыть сообщение").click();
 
       expect(readNotice()?.hidden).toBe(true);
       expect(location.hash).toBe("#1.!!!");
