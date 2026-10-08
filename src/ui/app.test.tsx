@@ -1204,9 +1204,10 @@ describe("errors at the fields", () => {
 
 describe("amount placeholder", () => {
   it("shows the format with a comma on the Russian page", () => {
-    expect(findInput(RU.expenses.amountLabel("₽")).placeholder).toBe(
-      RU.expenses.amountPlaceholder,
-    );
+    const placeholder = findInput(RU.expenses.amountLabel("₽")).placeholder;
+
+    expect(placeholder).toBe(RU.expenses.amountPlaceholder);
+    expect(placeholder).toContain("349,90");
   });
 
   it("shows the format with a point on the English page", () => {
