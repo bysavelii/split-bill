@@ -10,7 +10,7 @@ import {
 export const PREVIEW_IMAGE_WIDTH = 1200;
 export const PREVIEW_IMAGE_HEIGHT = 630;
 /** The `hreflang` value of the page for visitors whose language the site does not have. */
-export const DEFAULT_ALTERNATE_LANGUAGE = "x-default";
+const DEFAULT_ALTERNATE_LANGUAGE = "x-default";
 
 export interface PageAlternate {
   /** A language code or `x-default`. */

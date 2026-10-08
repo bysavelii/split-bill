@@ -9,15 +9,29 @@ export type PluralForms = Readonly<
 
 const MONEY_FRACTION_DIGITS = 2;
 
-const numberFormats: Record<Locale, Intl.NumberFormat> = {
-  en: new Intl.NumberFormat(LOCALE_DEFINITIONS.en.languageTag),
-  ru: new Intl.NumberFormat(LOCALE_DEFINITIONS.ru.languageTag),
-};
+/** A lookup that creates the `Intl` object of a language on first use, so a new language needs no entry here. */
+function createLocaleLookup<Formatter>(
+  createFormatter: (languageTag: string) => Formatter,
+): (locale: Locale) => Formatter {
+  const formatters = new Map<Locale, Formatter>();
 
-const pluralRules: Record<Locale, Intl.PluralRules> = {
-  en: new Intl.PluralRules(LOCALE_DEFINITIONS.en.languageTag),
-  ru: new Intl.PluralRules(LOCALE_DEFINITIONS.ru.languageTag),
-};
+  return (locale) => {
+    const cachedFormatter = formatters.get(locale);
+    if (cachedFormatter !== undefined) return cachedFormatter;
+
+    const formatter = createFormatter(LOCALE_DEFINITIONS[locale].languageTag);
+    formatters.set(locale, formatter);
+
+    return formatter;
+  };
+}
+
+const findNumberFormat = createLocaleLookup(
+  (languageTag) => new Intl.NumberFormat(languageTag),
+);
+const findPluralRules = createLocaleLookup(
+  (languageTag) => new Intl.PluralRules(languageTag),
+);
 
 const moneyFormats = new Map<string, Intl.NumberFormat>();
 
@@ -42,7 +56,7 @@ function findMoneyFormat(
 
 /** A number with the digit grouping of the language: "1,000" or "1 000". */
 export function formatNumber(value: number, locale: Locale): string {
-  return numberFormats[locale].format(value);
+  return findNumberFormat(locale).format(value);
 }
 
 /** A number with the word in the right form: "2 transfers", "2 перевода", "5 человек". */
@@ -51,7 +65,7 @@ export function formatCount(
   forms: PluralForms,
   locale: Locale,
 ): string {
-  const category = pluralRules[locale].select(count);
+  const category = findPluralRules(locale).select(count);
   const form = forms[category] ?? forms.other;
 
   return `${formatNumber(count, locale)} ${form}`;

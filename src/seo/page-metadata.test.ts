@@ -4,7 +4,7 @@ import { LOCALES } from "../i18n/locales";
 import { buildPageMetadata, serializeStructuredData } from "./page-metadata";
 
 const SITE_ROOT = new URL("https://bysavelii.github.io/split-bill/");
-const ENGLISH_URL = "https://bysavelii.github.io/split-bill/";
+const ENGLISH_URL = SITE_ROOT.href;
 const RUSSIAN_URL = "https://bysavelii.github.io/split-bill/ru/";
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 160;
@@ -39,8 +39,8 @@ describe("buildPageMetadata", () => {
     const english = buildPageMetadata({ locale: "en", siteRoot: SITE_ROOT });
     const russian = buildPageMetadata({ locale: "ru", siteRoot: SITE_ROOT });
 
-    expect(english.imageUrl).toBe(`${ENGLISH_URL}og-image-en.png`);
-    expect(russian.imageUrl).toBe(`${ENGLISH_URL}og-image-ru.png`);
+    expect(english.imageUrl).toBe(`${SITE_ROOT.href}og-image-en.png`);
+    expect(russian.imageUrl).toBe(`${SITE_ROOT.href}og-image-ru.png`);
   });
 
   it("names the Open Graph locale of the page and of the other language", () => {
