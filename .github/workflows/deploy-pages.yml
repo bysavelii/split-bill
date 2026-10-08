@@ -25,7 +25,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # The checks already include the build into dist.
+      # The checks already include the Astro build into dist.
       - run: make check
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

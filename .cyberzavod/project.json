@@ -38,7 +38,9 @@
       "javascript",
       "typescript"
     ],
-    "frameworks": [],
+    "frameworks": [
+      "astro"
+    ],
     "packageManager": "npm"
   }
 }

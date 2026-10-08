@@ -16,7 +16,7 @@ const DOM_GLOBALS = [
 ];
 
 export default tseslint.config(
-  { ignores: ["dist", "coverage", ".cyberzavod", ".claude"] },
+  { ignores: ["dist", "coverage", ".astro", ".cyberzavod", ".claude"] },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
   {
