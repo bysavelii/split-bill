@@ -1,8 +1,12 @@
 ---
 import type { InferGetStaticPropsType } from "astro";
 import "../style.css";
+import HowItWorks from "../components/how-it-works.astro";
+import PageHead from "../components/page-head.astro";
 import { DICTIONARIES } from "../i18n/dictionaries";
 import { buildRouteParameter, LOCALES } from "../i18n/locales";
+import { buildPageMetadata } from "../seo/page-metadata";
+import { buildSiteRoot } from "../seo/site-root";
 import { App } from "../ui/app";
 
 export function getStaticPaths() {
@@ -17,24 +21,19 @@ type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 
 const { locale } = Astro.props;
 const messages = DICTIONARIES[locale];
+const siteRoot = buildSiteRoot(Astro.site, import.meta.env.BASE_URL);
+const metadata = buildPageMetadata({ locale, siteRoot });
 ---
 
 <!doctype html>
 <html lang={locale}>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0e7c66" />
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href={`${import.meta.env.BASE_URL}favicon.svg`}
-    />
-    <title>{messages.header.title}</title>
+    <PageHead metadata={metadata} />
   </head>
   <body>
     <main id="app">
       <App client:load locale={locale} />
+      <HowItWorks messages={messages.howItWorks} />
     </main>
   </body>
 </html>

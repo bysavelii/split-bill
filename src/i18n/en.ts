@@ -90,6 +90,21 @@ export const EN_MESSAGES: Messages = {
     transfers: { one: "transfer", other: "transfers" },
     people: { one: "person", other: "people" },
   },
+  seo: {
+    title: "Split the Bill — Who Owes Whom, Fewest Transfers",
+    description:
+      "Free bill splitter: add who paid what and for whom, and get the fewest transfers to settle up. No sign-up, and the whole bill fits in one shareable link.",
+    imageAlt:
+      "The Split the bill page with an example: participants, expenses and the transfers that settle everyone up",
+  },
+  howItWorks: {
+    heading: "How it works",
+    steps: [
+      "Add everyone who is in — yourself too.",
+      "Enter each expense: who paid, how much and for whom.",
+      "See the fewest transfers that settle everyone up, and send the link to the group.",
+    ],
+  },
   currencyLabel: "Currency",
   currencyNames: {
     USD: "US dollar",

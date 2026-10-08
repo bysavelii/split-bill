@@ -100,6 +100,20 @@ export interface Messages {
     readonly transfers: PluralForms;
     readonly people: PluralForms;
   };
+  /** Texts for search engines and link previews; the page head uses them. */
+  readonly seo: {
+    /** The title of the page; search results cut it at about 60 characters. */
+    readonly title: string;
+    /** The snippet of the page; search results cut it at about 160 characters. */
+    readonly description: string;
+    /** The description of the preview image for those who cannot see it. */
+    readonly imageAlt: string;
+  };
+  /** The static block under the app: it explains the page to those who read it without scripts. */
+  readonly howItWorks: {
+    readonly heading: string;
+    readonly steps: readonly [string, string, string];
+  };
   /** The accessible name of the currency select; the label is not shown. */
   readonly currencyLabel: string;
   readonly currencyNames: Record<Currency, string>;

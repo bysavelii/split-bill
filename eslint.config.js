@@ -37,10 +37,11 @@ export default tseslint.config(
     ...solid,
   },
   {
-    // Domain logic, link encoding, texts and number formatting know nothing about the DOM and the interface.
+    // Domain logic, link encoding, texts, number formatting and page metadata know nothing about the DOM and the interface.
     files: [
       "src/bill/**",
       "src/i18n/**",
+      "src/seo/**",
       "src/settlement/**",
       "src/sharing/**",
     ],
