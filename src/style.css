@@ -50,6 +50,7 @@
   /* 44 px — минимальный размер цели касания для пальца. */
   --touch-target: 2.75rem;
   --icon-size: 1.25rem;
+  --avatar-size: 1.75rem;
   --column-width: 40rem;
   --duration-fast: 150ms;
 }
@@ -310,6 +311,52 @@ h3 {
 
 .notice button {
   flex-shrink: 0;
+}
+
+.avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-avatar-text);
+  border-radius: var(--radius-pill);
+}
+
+.avatar-tone-1 {
+  background: var(--color-avatar-1);
+}
+
+.avatar-tone-2 {
+  background: var(--color-avatar-2);
+}
+
+.avatar-tone-3 {
+  background: var(--color-avatar-3);
+}
+
+.avatar-tone-4 {
+  background: var(--color-avatar-4);
+}
+
+.avatar-tone-5 {
+  background: var(--color-avatar-5);
+}
+
+.avatar-tone-6 {
+  background: var(--color-avatar-6);
+}
+
+.avatar-tone-7 {
+  background: var(--color-avatar-7);
+}
+
+.avatar-tone-8 {
+  background: var(--color-avatar-8);
 }
 
 /* Суммы выровнены по правому краю и одной ширины цифр, чтобы столбец читался. */
