@@ -2,6 +2,7 @@ import { createEffect, createSignal, on } from "solid-js";
 import type { Messages } from "../i18n/messages";
 import { encodeBill } from "../sharing/bill-code";
 import { buildShareUrl } from "./address";
+import { NO_MESSAGE } from "./bill-message";
 import type { BillProps } from "./bill-props";
 import { Field, MessageArea } from "./field";
 import { useLocale } from "./locale-context";
@@ -15,8 +16,6 @@ type ShareState =
   | { readonly kind: "copyManually"; readonly link: string };
 
 const IDLE_STATE: ShareState = { kind: "idle" };
-
-const NO_MESSAGE = "";
 
 function describeShareState(state: ShareState, messages: Messages): string {
   switch (state.kind) {

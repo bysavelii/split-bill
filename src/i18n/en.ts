@@ -19,6 +19,7 @@ export const EN_MESSAGES: Messages = {
     cannotRemove: (name) =>
       `Can't remove ${name}: there are expenses with this participant. Remove them first`,
     removeLabel: (name) => `Remove participant ${name}`,
+    removed: (name) => `Participant removed: ${name}`,
   },
   expenses: {
     heading: "Expenses",
@@ -27,6 +28,7 @@ export const EN_MESSAGES: Messages = {
       "No expenses yet. Add the first one: who paid, how much and for whom",
     payerLabel: "Who paid",
     amountLabel: (currencySymbol) => `Amount, ${currencySymbol}`,
+    amountPlaceholder: "1500 or 349.90",
     beneficiariesLegend: "For whom",
     addButton: "Add expense",
     amountError: "Enter an amount above zero, for example 1500 or 349.90",
@@ -37,6 +39,11 @@ export const EN_MESSAGES: Messages = {
     forBeneficiaries: (names) => `for: ${names.join(", ")}`,
     removeLabel: (payerName, amountText, beneficiariesText) =>
       `Remove expense: ${payerName} — ${amountText}, ${beneficiariesText}`,
+    removed: (payerName, amountText, beneficiariesText) =>
+      `Expense removed: ${payerName} — ${amountText}, ${beneficiariesText}`,
+  },
+  undo: {
+    button: "Undo",
   },
   summary: {
     heading: "Summary",
@@ -73,8 +80,9 @@ export const EN_MESSAGES: Messages = {
     note: "The bill is kept in the link itself — no server, no sign-up. Anyone who opens it sees the same bill.",
     button: "Share",
     linkLabel: "Bill link",
-    copied: "Link copied",
-    copyManually: "Copy the link from the field",
+    copied: "Link copied. Send it to your group — they will see this bill",
+    copyManually:
+      "Couldn't copy automatically: copy the link from the field and send it to your group",
   },
   linkNotice: {
     malformed:

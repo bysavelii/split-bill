@@ -22,6 +22,8 @@ export interface Messages {
     readonly nameDuplicate: string;
     readonly cannotRemove: (name: string) => string;
     readonly removeLabel: (name: string) => string;
+    /** The text of the undo bar after a participant is removed. */
+    readonly removed: (name: string) => string;
   };
   readonly expenses: {
     readonly heading: string;
@@ -29,6 +31,8 @@ export interface Messages {
     readonly emptyHint: string;
     readonly payerLabel: string;
     readonly amountLabel: (currencySymbol: string) => string;
+    /** The format of an amount shown in the empty field. */
+    readonly amountPlaceholder: string;
     readonly beneficiariesLegend: string;
     readonly addButton: string;
     readonly amountError: string;
@@ -41,6 +45,15 @@ export interface Messages {
       amountText: string,
       beneficiariesText: string,
     ) => string;
+    /** The text of the undo bar after an expense is removed. */
+    readonly removed: (
+      payerName: string,
+      amountText: string,
+      beneficiariesText: string,
+    ) => string;
+  };
+  readonly undo: {
+    readonly button: string;
   };
   readonly summary: {
     readonly heading: string;
@@ -85,7 +98,9 @@ export interface Messages {
     readonly note: string;
     readonly button: string;
     readonly linkLabel: string;
+    /** Success: says what happened and what to do next. */
     readonly copied: string;
+    /** The copy failed: says what to do by hand. */
     readonly copyManually: string;
   };
   readonly linkNotice: {
