@@ -3,6 +3,7 @@ import type { Balance } from "../settlement/balances";
 import {
   describeParticipantTotals,
   describeTransferCount,
+  formatTransferCount,
 } from "./settlement-explanation";
 
 function normalize(text: string): string {
@@ -77,5 +78,15 @@ describe("describeTransferCount", () => {
     expect(text).toBe(
       "19 переводов: деньги отдают или получают 20 человек. В такой большой компании переводы подобраны упрощённо — возможно, получится обойтись меньшим числом.",
     );
+  });
+});
+
+describe("formatTransferCount", () => {
+  it.each([
+    [1, "1 перевод"],
+    [2, "2 перевода"],
+    [5, "5 переводов"],
+  ])("для %i пишет «%s»", (count, expected) => {
+    expect(formatTransferCount(count)).toBe(expected);
   });
 });

@@ -151,16 +151,20 @@ export function createExpensesSection(actions: BillActions): Section {
   }
 
   function createRow(bill: Bill, expense: Expense): HTMLLIElement {
+    const description = describeExpense(bill, expense);
     const removeButton = createElement("button", {
       text: "Удалить",
-      attributes: { type: "button", "aria-label": "Удалить трату" },
+      attributes: {
+        type: "button",
+        "aria-label": `Удалить трату: ${description}`,
+      },
     });
     removeButton.addEventListener("click", () => {
       actions.changeBill(removeExpense(actions.getBill(), expense.id));
     });
 
     return createElement("li", {}, [
-      createElement("span", { text: describeExpense(bill, expense) }),
+      createElement("span", { text: description }),
       removeButton,
     ]);
   }

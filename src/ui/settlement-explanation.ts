@@ -39,9 +39,14 @@ export function describeParticipantTotals(
   return `${name}: заплачено ${paid}, доля ${share} — ${outcome}`;
 }
 
+/** Число переводов со словом в нужной форме: «1 перевод», «2 перевода», «5 переводов». */
+export function formatTransferCount(count: number): string {
+  return formatCount(count, TRANSFER_FORMS);
+}
+
 /** Одна фраза о том, почему переводов именно столько. */
 export function describeTransferCount(facts: TransferCountFacts): string {
-  const transfers = formatCount(facts.transferCount, TRANSFER_FORMS);
+  const transfers = formatTransferCount(facts.transferCount);
   const settlers = formatCount(facts.settlingCount, PERSON_FORMS);
 
   if (!facts.isMinimal) {
