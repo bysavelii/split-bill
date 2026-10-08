@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-4e89c335",
+  "timestamp": "2026-10-08T11:43:39.535Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Share links use code version 2 [names, expenses, currency]; version 1 links without a currency still open and take the page's default currency",
+    "description": "Issue #10: the currency is a property of the bill and must travel in the link, old links must keep working"
+  }
+}

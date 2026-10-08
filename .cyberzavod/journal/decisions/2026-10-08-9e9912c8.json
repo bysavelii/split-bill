@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-9e9912c8",
+  "timestamp": "2026-10-08T11:43:39.774Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Amounts are formatted with Intl.NumberFormat currencyDisplay narrowSymbol",
+    "description": "Shows ₽1,250.50 instead of RUB 1,250.50 for a ruble bill on the English page"
+  }
+}

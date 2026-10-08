@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-5b9d1386",
+  "timestamp": "2026-10-08T11:43:39.676Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "English is served at /split-bill/ and Russian at /split-bill/ru/ from one route src/pages/[...locale].astro driven by LOCALES; LocaleDefinition.pagePath is the single source of page locations",
+    "description": "Adding a language is a new entry, and canonical, hreflang, sitemap and the language link cannot drift apart"
+  }
+}

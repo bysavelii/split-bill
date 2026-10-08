@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-11d179dd",
+  "timestamp": "2026-10-08T11:43:39.917Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "Lighthouse is run with npx lighthouse@13 against astro preview and is not a project dependency; the mobile HTML reports live in docs/lighthouse",
+    "description": "Issue #10 asks for reports attached to the PR without growing the dependencies"
+  }
+}

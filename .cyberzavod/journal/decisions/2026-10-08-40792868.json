@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-40792868",
+  "timestamp": "2026-10-08T11:43:39.844Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "The sitemap is sitemap-index.xml plus sitemap-0.xml from @astrojs/sitemap, and robots.txt is generated from site and base",
+    "description": "@astrojs/sitemap cannot write a single sitemap.xml; one source for the address"
+  }
+}
