@@ -1138,6 +1138,21 @@ describe("ссылка на счёт", () => {
       expect(location.hash).toBe("#1.!!!");
     });
 
+    it("делит секции на левую и правую колонки", () => {
+      const columns = [...(root.querySelector(".layout")?.children ?? [])];
+      const readTitles = (column: Element | undefined): string[] =>
+        [...(column?.querySelectorAll("h2") ?? [])].map(
+          (title) => title.textContent,
+        );
+
+      expect(columns.map((column) => column.className)).toEqual([
+        "layout-main",
+        "layout-side",
+      ]);
+      expect(readTitles(columns[0])).toEqual(["Участники", "Траты"]);
+      expect(readTitles(columns[1])).toEqual(["Итог", "Поделиться"]);
+    });
+
     it("сообщение стоит между шапкой и секциями", () => {
       const children = [...root.children].map((child) => child.tagName);
 

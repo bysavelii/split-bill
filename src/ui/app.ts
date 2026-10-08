@@ -27,11 +27,15 @@ export function mountApp(root: HTMLElement): () => void {
   };
   const linkNotice = createLinkNotice();
   const pageHeader = createPageHeader();
+  const participantsSection = createParticipantsSection(actions);
+  const expensesSection = createExpensesSection(actions);
+  const summarySection = createSummarySection();
+  const shareSection = createShareSection(actions);
   const sections = [
-    createParticipantsSection(actions),
-    createExpensesSection(actions),
-    createSummarySection(),
-    createShareSection(actions),
+    participantsSection,
+    expensesSection,
+    summarySection,
+    shareSection,
   ];
 
   function renderSections(): void {
@@ -67,11 +71,18 @@ export function mountApp(root: HTMLElement): () => void {
     showOpenedBill(result.bill);
   }
 
-  const layout = createElement(
-    "div",
-    { className: "layout" },
-    sections.map((section) => section.element),
-  );
+  const mainColumn = createElement("div", { className: "layout-main" }, [
+    participantsSection.element,
+    expensesSection.element,
+  ]);
+  const sideColumn = createElement("div", { className: "layout-side" }, [
+    summarySection.element,
+    shareSection.element,
+  ]);
+  const layout = createElement("div", { className: "layout" }, [
+    mainColumn,
+    sideColumn,
+  ]);
   root.replaceChildren(pageHeader.element, linkNotice.element, layout);
   openBillFromAddress();
 

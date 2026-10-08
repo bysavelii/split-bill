@@ -52,6 +52,7 @@
   --icon-size: 1.25rem;
   --avatar-size: 1.75rem;
   --column-width: 40rem;
+  --column-width-wide: 72rem;
   --duration-fast: 150ms;
 }
 
@@ -134,7 +135,9 @@ main {
   content: "·";
 }
 
-.layout {
+.layout,
+.layout-main,
+.layout-side {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -633,6 +636,31 @@ input[readonly] {
       color var(--duration-fast),
       filter var(--duration-fast),
       opacity var(--duration-fast);
+  }
+}
+
+/* 900 px — ширина, с которой две колонки удобнее одной (в @media нельзя взять значение из переменной). */
+@media (min-width: 900px) {
+  main {
+    max-width: var(--column-width-wide);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  /* Итог остаётся на виду при прокрутке; если он выше экрана, прокручивается сам.
+     Внутренний отступ нужен, чтобы рамка фокуса и тень у края не обрезались. */
+  .layout-side {
+    position: sticky;
+    top: var(--space-6);
+    max-height: calc(100dvh - 2 * var(--space-6));
+    padding: var(--space-1);
+    margin: calc(-1 * var(--space-1));
+    overflow-y: auto;
   }
 }
 
