@@ -1,54 +1,54 @@
-# Делим счёт
+# Делим счёт (Split the bill)
 
-Веб-приложение для тех, кто ездит компанией или ходит в кафе: вносите траты, а приложение считает, кто кому сколько должен, и сводит расчёты к минимальному числу переводов. Удобно открывать и с телефона, и с компьютера.
+A web app for people who travel in a group or go to a cafe together: enter the expenses, and the app calculates who owes whom and how much, and reduces the settlements to the minimal number of transfers. It is convenient to open on both a phone and a computer. The interface is in Russian.
 
-<img src="docs/screenshot.png" width="390" alt="Приложение «Делим счёт» на телефоне: пример счёта с участниками Аня, Боря, Вера и Гоша и формой траты">
+<img src="docs/screenshot.png" width="390" alt="The app «Делим счёт» on a phone: an example bill with the participants Аня, Боря, Вера and Гоша and the expense form">
 
-<img src="docs/screenshot-desktop.png" alt="Приложение «Делим счёт» на компьютере: слева участники и траты, справа итог с тремя переводами и кнопка «Поделиться»">
+<img src="docs/screenshot-desktop.png" alt="The app «Делим счёт» on a computer: participants and expenses on the left, the summary with three transfers and the «Поделиться» button on the right">
 
-## Возможности
+## Features
 
-- Участники: добавляйте и удаляйте людей из компании.
-- Траты: кто платил, сколько и за кого — за всех или только за часть компании.
-- Итог: минимальное число переводов и объяснение, как посчитано (кто сколько заплатил и какая у него доля).
-- Светлая и тёмная тема — по настройке системы; на широком экране две колонки: участники и траты слева, итог справа.
-- Ссылка «Поделиться» — без сервера и регистрации: счёт хранится во фрагменте адреса после `#`, и сервер его не получает.
+- Participants: add and remove people from the group.
+- Expenses: who paid, how much and for whom: for everyone or only for part of the group.
+- Summary: the minimal number of transfers and an explanation of how it was calculated (who paid how much and what their share is).
+- Light and dark themes follow the system setting; on a wide screen there are two columns: participants and expenses on the left, the summary on the right.
+- The "Поделиться" (share) link needs no server or registration: the bill is stored in the address fragment after `#`, and the server never receives it.
 
-## Как запустить локально
+## Running locally
 
-Нужен Node 22 или новее.
+Node 22 or newer is required.
 
 ```sh
-npm ci            # установить зависимости
-npm run dev       # dev-сервер на http://localhost:5173/ — откройте адрес в браузере
-make check        # проверки: форматирование, типы, линтер, тесты, сборка
-npm run build     # сборка в каталог dist
-npm run preview   # посмотреть собранное приложение
-npm run format    # отформатировать код
+npm ci            # install dependencies
+npm run dev       # dev server at http://localhost:5173/ — open the address in a browser
+make check        # checks: formatting, types, linter, tests, build
+npm run build     # build into the dist directory
+npm run preview   # look at the built app
+npm run format    # format the code
 ```
 
-## Как устроен проект
+## Project structure
 
-- `src/bill` — счёт: участники, траты, суммы в копейках.
-- `src/settlement` — расчёт: балансы, доли и сведение долгов к минимальному числу переводов.
-- `src/sharing` — кодирование счёта в ссылку и разбор ссылки.
-- `src/ui` — интерфейс: секции страницы и работа с DOM.
-- `src/style.css` — стили: токены (цвета обеих тем, отступы, радиусы) и вёрстка для телефона и компьютера; правила — в AGENTS.md, раздел «Стиль интерфейса».
-- `index.html` — единственная страница, в неё подключается `src/main.ts`.
-- `.github/workflows` — проверки на pull request и выкладка на GitHub Pages.
+- `src/bill` — the bill: participants, expenses, amounts in kopecks.
+- `src/settlement` — the calculation: balances, shares and reducing debts to the minimal number of transfers.
+- `src/sharing` — encoding the bill into a link and parsing the link.
+- `src/ui` — the interface: page sections and DOM handling.
+- `src/style.css` — styles: tokens (colors of both themes, spacing, radii) and the layout for phone and computer; the rules are in AGENTS.md, section "Interface style".
+- `index.html` — the only page; it loads `src/main.ts`.
+- `.github/workflows` — checks on pull requests and deployment to GitHub Pages.
 
-Предметная логика (`src/bill`, `src/settlement`, `src/sharing`) не знает о DOM: это закрепляет ESLint.
+Domain logic (`src/bill`, `src/settlement`, `src/sharing`) knows nothing about the DOM: ESLint enforces this.
 
-## Выкладка на GitHub Pages
+## Deploying to GitHub Pages
 
-Сайт выкладывается из ветки `main` workflow «Выкладка на GitHub Pages». Workflow «Проверки» запускает `make check` на каждом pull request в `main`.
+The site is deployed from the `main` branch by the workflow "Выкладка на GitHub Pages" (Deploy to GitHub Pages). The workflow "Проверки" (Checks) runs `make check` on every pull request into `main`.
 
-1. В репозитории откройте Settings → Pages → Build and deployment и выберите Source: «GitHub Actions».
-2. Сделайте push в `main` или откройте Actions → «Выкладка на GitHub Pages» → Run workflow (ветка `main`: окружение `github-pages` по умолчанию разрешает выкладку только из ветки по умолчанию).
+1. In the repository open Settings → Pages → Build and deployment and choose Source: "GitHub Actions".
+2. Push to `main` or open Actions → "Выкладка на GitHub Pages" → Run workflow (branch `main`: the `github-pages` environment by default allows deployment only from the default branch).
 
-Адрес сайта — `https://<владелец>.github.io/split-bill/`. Он появится в Settings → Pages и в сводке запуска у job «Выкладка».
+The site address is `https://<owner>.github.io/split-bill/`. It appears in Settings → Pages and in the run summary of the "Выкладка" (Deployment) job.
 
-## Ограничения
+## Limitations
 
-- Очень большой счёт (сотни участников или тысячи трат) может не поместиться в ссылку и откроется как повреждённый.
-- Точный минимум переводов гарантирован до 16 участников с ненулевым балансом, дальше расчёт приближённый, и приложение об этом пишет.
+- A very large bill (hundreds of participants or thousands of expenses) may not fit into a link and will open as corrupted.
+- The exact minimum number of transfers is guaranteed for up to 16 participants with a non-zero balance; beyond that the calculation is approximate, and the app says so.
