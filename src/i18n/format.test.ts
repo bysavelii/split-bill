@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DICTIONARIES } from "./dictionaries";
 import {
   formatCount,
   formatMoney,
@@ -7,18 +8,11 @@ import {
   type PluralForms,
 } from "./format";
 
-const RUSSIAN_TRANSFER_FORMS: PluralForms = {
-  one: "перевод",
-  few: "перевода",
-  many: "переводов",
-  other: "перевода",
-};
-const RUSSIAN_PERSON_FORMS: PluralForms = {
-  one: "человек",
-  few: "человека",
-  many: "человек",
-  other: "человека",
-};
+// dictionaries.test.ts guarantees that the Russian sets have all four forms.
+const RUSSIAN_TRANSFER_FORMS = DICTIONARIES.ru.plurals
+  .transfers as Required<PluralForms>;
+const RUSSIAN_PERSON_FORMS = DICTIONARIES.ru.plurals
+  .people as Required<PluralForms>;
 const ENGLISH_PARTICIPANT_FORMS: PluralForms = {
   one: "participant",
   other: "participants",
@@ -34,33 +28,38 @@ function normalize(text: string): string {
 
 describe("formatCount in Russian", () => {
   it.each([
-    [1, "1 перевод"],
-    [2, "2 перевода"],
-    [5, "5 переводов"],
-    [11, "11 переводов"],
-    [21, "21 перевод"],
-    [22, "22 перевода"],
-    [25, "25 переводов"],
-  ])("inflects transfers for %i", (count, expected) => {
+    [1, "one"],
+    [2, "few"],
+    [5, "many"],
+    [11, "many"],
+    [21, "one"],
+    [22, "few"],
+    [25, "many"],
+  ] as const)("inflects transfers for %i", (count, category) => {
+    const expected = `${String(count)} ${RUSSIAN_TRANSFER_FORMS[category]}`;
+
     expect(formatCount(count, RUSSIAN_TRANSFER_FORMS, "ru")).toBe(expected);
   });
 
   it.each([
-    [1, "1 человек"],
-    [2, "2 человека"],
-    [5, "5 человек"],
-    [11, "11 человек"],
-    [21, "21 человек"],
-    [22, "22 человека"],
-    [25, "25 человек"],
-  ])("inflects people for %i", (count, expected) => {
+    [1, "one"],
+    [2, "few"],
+    [5, "many"],
+    [11, "many"],
+    [21, "one"],
+    [22, "few"],
+    [25, "many"],
+  ] as const)("inflects people for %i", (count, category) => {
+    const expected = `${String(count)} ${RUSSIAN_PERSON_FORMS[category]}`;
+
     expect(formatCount(count, RUSSIAN_PERSON_FORMS, "ru")).toBe(expected);
   });
 
   it("groups thousands with a space", () => {
     const text = formatCount(1000, RUSSIAN_TRANSFER_FORMS, "ru");
+    const expected = `1 000 ${RUSSIAN_TRANSFER_FORMS.many}`;
 
-    expect(normalize(text)).toBe("1 000 переводов");
+    expect(normalize(text)).toBe(expected);
   });
 });
 

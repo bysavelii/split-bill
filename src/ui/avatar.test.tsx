@@ -11,31 +11,31 @@ import {
 afterEach(cleanup);
 
 const TWENTY_NAMES = [
-  "Аня",
-  "Боря",
-  "Вера",
-  "Гоша",
-  "Даша",
-  "Егор",
-  "Жанна",
-  "Зоя",
-  "Илья",
-  "Катя",
-  "Лена",
-  "Миша",
-  "Надя",
-  "Олег",
-  "Паша",
-  "Рита",
-  "Саша",
-  "Тима",
-  "Уля",
-  "Фёдор",
+  "Ann",
+  "Ben",
+  "Clara",
+  "Dan",
+  "Eve",
+  "Frank",
+  "Grace",
+  "Henry",
+  "Ivy",
+  "Jack",
+  "Kate",
+  "Leo",
+  "Mia",
+  "Noah",
+  "Olivia",
+  "Paul",
+  "Quinn",
+  "Rose",
+  "Sam",
+  "Tom",
 ];
 
 describe("pickAvatarTone", () => {
   it("always returns the same tone for one name", () => {
-    expect(pickAvatarTone("Аня")).toBe(pickAvatarTone("Аня"));
+    expect(pickAvatarTone("Ann")).toBe(pickAvatarTone("Ann"));
   });
 
   it("returns an integer within the palette", () => {
@@ -57,9 +57,9 @@ describe("pickAvatarTone", () => {
 
 describe("readInitial", () => {
   it.each([
-    ["аня", "А"],
-    ["  Боря", "Б"],
-    ["👩‍👩‍👧 Ок", "👩‍👩‍👧"],
+    ["άννα", "Ά"],
+    ["  Ben", "B"],
+    ["👩‍👩‍👧 Ok", "👩‍👩‍👧"],
   ])('from "%s" takes "%s"', (name, expected) => {
     expect(readInitial(name)).toBe(expected);
   });
@@ -71,13 +71,13 @@ describe("readInitial", () => {
 
 describe("Avatar", () => {
   it("is hidden from the screen reader, shows the first letter and carries the tone class", () => {
-    const avatar = render(() => <Avatar name="боря" />).container
+    const avatar = render(() => <Avatar name="ben" />).container
       .firstElementChild;
     if (avatar === null) throw new Error("Avatar not rendered");
 
-    const toneNumber = pickAvatarTone("боря") + 1;
+    const toneNumber = pickAvatarTone("ben") + 1;
     expect(avatar.getAttribute("aria-hidden")).toBe("true");
-    expect(avatar.textContent).toBe("Б");
+    expect(avatar.textContent).toBe("B");
     expect(avatar.classList.contains("avatar")).toBe(true);
     expect(avatar.classList.contains(`avatar-tone-${String(toneNumber)}`)).toBe(
       true,

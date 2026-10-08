@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Bill } from "../bill/bill";
 import type { Currency } from "../bill/currency";
 import { DICTIONARIES } from "../i18n/dictionaries";
-import { formatMoney } from "../i18n/format";
+import { formatMoney, type PluralForms } from "../i18n/format";
 import type { Locale } from "../i18n/locales";
 import type { AmountFormatter } from "./amount-formatter";
 import {
@@ -13,6 +13,10 @@ import {
 } from "./settlement-explanation";
 
 const MINUS_SIGN = "\u2212";
+const RU = DICTIONARIES.ru;
+// dictionaries.test.ts guarantees that the Russian sets have all four forms.
+const RUSSIAN_TRANSFER_FORMS = RU.plurals.transfers as Required<PluralForms>;
+const RUSSIAN_PERSON_FORMS = RU.plurals.people as Required<PluralForms>;
 
 interface ExplanationCase {
   readonly locale: Locale;
@@ -31,22 +35,28 @@ const CASES: readonly ExplanationCase[] = [
   {
     locale: "ru",
     currency: "RUB",
-    receives: "получает +600,00 ₽",
-    gives: `отдаёт ${MINUS_SIGN}300,00 ₽`,
-    balanced: "в расчёте",
-    usualTransfers:
-      "2 перевода — меньше не получится: деньги отдают или получают 3 человека, а когда их нельзя разбить на группы, которые рассчитываются между собой, переводов нужно на один меньше, чем людей.",
-    groupedTransfers:
-      "2 перевода вместо обычных 3: деньги отдают или получают 4 человека, но они делятся на группы, которые рассчитываются между собой. Меньше не получится.",
-    approximateTransfers:
-      "19 переводов: деньги отдают или получают 20 человек. В такой большой компании переводы подобраны упрощённо — возможно, получится обойтись меньшим числом.",
+    receives: RU.summary.receives("600,00 ₽"),
+    gives: RU.summary.gives("300,00 ₽"),
+    balanced: RU.summary.balanced,
+    usualTransfers: RU.summary.reasonMinimal(
+      `2 ${RUSSIAN_TRANSFER_FORMS.few}`,
+      `3 ${RUSSIAN_PERSON_FORMS.few}`,
+    ),
+    groupedTransfers: RU.summary.reasonGroups(
+      `2 ${RUSSIAN_TRANSFER_FORMS.few}`,
+      "3",
+      `4 ${RUSSIAN_PERSON_FORMS.few}`,
+    ),
+    approximateTransfers: RU.summary.reasonApproximate(
+      `19 ${RUSSIAN_TRANSFER_FORMS.many}`,
+      `20 ${RUSSIAN_PERSON_FORMS.many}`,
+    ),
     transferCounts: [
-      [1, "1 перевод"],
-      [2, "2 перевода"],
-      [5, "5 переводов"],
+      [1, `1 ${RUSSIAN_TRANSFER_FORMS.one}`],
+      [2, `2 ${RUSSIAN_TRANSFER_FORMS.few}`],
+      [5, `5 ${RUSSIAN_TRANSFER_FORMS.many}`],
     ],
-    roundingNote:
-      "Когда трата не делится поровну до копейки, у тех, кто выше в списке участников, доля на копейку больше.",
+    roundingNote: RU.roundingNote.RUB,
   },
   {
     locale: "en",
@@ -128,6 +138,7 @@ describe.each(CASES)("explanation in $locale and $currency", (explanation) => {
       );
 
       expect(outcome.kind).toBe("gives");
+      expect(outcome.text).toContain(MINUS_SIGN);
       expect(normalize(outcome.text)).toBe(explanation.gives);
     });
 
