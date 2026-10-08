@@ -267,6 +267,40 @@ describe("сценарий деления счёта", () => {
   });
 });
 
+describe("шапка", () => {
+  function readOverview(): string[] {
+    return readTexts(".page-header .overview-item");
+  }
+
+  it("показывает название и подзаголовок", () => {
+    expect(root.querySelector(".page-header h1")?.textContent).toBe(
+      "Делим счёт",
+    );
+    expect(root.querySelector(".page-subtitle")?.textContent).toBe(
+      "Кто кому сколько должен — без таблиц и споров",
+    );
+  });
+
+  it("у пустого счёта показывает нули", () => {
+    expect(readOverview()).toEqual([
+      "0 участников",
+      "0 трат",
+      "потрачено 0,00 ₽",
+    ]);
+  });
+
+  it("считает участников, траты и всего потраченного", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    expect(readOverview()).toEqual([
+      "3 участника",
+      "1 трата",
+      "потрачено 900,00 ₽",
+    ]);
+  });
+});
+
 describe("объяснение итога", () => {
   const ROUNDING_TEXT =
     "Когда трата не делится поровну до копейки, у тех, кто выше в списке участников, доля на копейку больше.";
@@ -907,17 +941,11 @@ describe("ссылка на счёт", () => {
       expect(location.hash).toBe("#1.!!!");
     });
 
-    it("сообщение стоит между заголовком и секциями", () => {
+    it("сообщение стоит между шапкой и секциями", () => {
       const children = [...root.children].map((child) => child.tagName);
 
-      expect(children).toEqual([
-        "H1",
-        "DIV",
-        "SECTION",
-        "SECTION",
-        "SECTION",
-        "SECTION",
-      ]);
+      expect(children).toEqual(["HEADER", "DIV", "DIV"]);
+      expect(root.children[1]).toBe(readNotice());
       expect(readNotice()?.hidden).toBe(true);
     });
   });

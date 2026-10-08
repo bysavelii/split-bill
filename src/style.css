@@ -102,6 +102,44 @@ main {
   padding: var(--space-5) var(--space-4);
 }
 
+.page-header {
+  margin-bottom: var(--space-2);
+}
+
+.page-header h1 {
+  margin-bottom: var(--space-1);
+}
+
+.page-subtitle {
+  margin-bottom: var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.overview {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+}
+
+.overview-item {
+  white-space: nowrap;
+}
+
+.overview-item + .overview-item::before {
+  margin: 0 var(--space-2);
+  font-weight: 400;
+  color: var(--color-text-muted);
+  content: "·";
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 section {
   padding: var(--space-4);
   background: var(--color-surface);

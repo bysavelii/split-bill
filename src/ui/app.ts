@@ -8,6 +8,7 @@ import { readBillCode, writeBillCode } from "./address";
 import { createElement } from "./dom";
 import { createExpensesSection } from "./expenses-section";
 import { createLinkNotice, describeBillCodeError } from "./link-notice";
+import { createPageHeader } from "./page-header";
 import { createParticipantsSection } from "./participants-section";
 import { createShareSection } from "./share-section";
 import { createSummarySection } from "./summary-section";
@@ -25,6 +26,7 @@ export function mountApp(root: HTMLElement): () => void {
     },
   };
   const linkNotice = createLinkNotice();
+  const pageHeader = createPageHeader();
   const sections = [
     createParticipantsSection(actions),
     createExpensesSection(actions),
@@ -33,7 +35,7 @@ export function mountApp(root: HTMLElement): () => void {
   ];
 
   function renderSections(): void {
-    for (const section of sections) section.render(bill);
+    for (const part of [pageHeader, ...sections]) part.render(bill);
   }
 
   function showOpenedBill(openedBill: Bill): void {
@@ -65,12 +67,12 @@ export function mountApp(root: HTMLElement): () => void {
     showOpenedBill(result.bill);
   }
 
-  const title = createElement("h1", { text: "Делим счёт" });
-  root.replaceChildren(
-    title,
-    linkNotice.element,
-    ...sections.map((section) => section.element),
+  const layout = createElement(
+    "div",
+    { className: "layout" },
+    sections.map((section) => section.element),
   );
+  root.replaceChildren(pageHeader.element, linkNotice.element, layout);
   openBillFromAddress();
 
   window.addEventListener("hashchange", openBillFromAddress);
