@@ -116,6 +116,31 @@ main {
   margin-bottom: var(--space-2);
 }
 
+/* The row wraps instead of overflowing a narrow screen. */
+.page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--space-2);
+}
+
+.currency-select select {
+  width: auto;
+  max-width: 100%;
+}
+
+.language-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-2);
+  font-weight: 600;
+  color: var(--color-accent);
+  border-radius: var(--radius-control);
+}
+
 .page-header h1 {
   margin-bottom: var(--space-1);
 }
@@ -598,6 +623,16 @@ input[readonly] {
 
 .note {
   font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+/* The section card of the base styles; the steps are numbered so the order reads without scripts. */
+.how-it-works-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+  margin: 0;
   color: var(--color-text-muted);
 }
 

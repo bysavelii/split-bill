@@ -1,0 +1,18 @@
+---
+import type { Messages } from "../i18n/messages";
+
+interface Props {
+  readonly messages: Messages["howItWorks"];
+}
+
+const { messages } = Astro.props;
+---
+
+<section class="how-it-works" aria-labelledby="how-it-works-heading">
+  <h2 id="how-it-works-heading">{messages.heading}</h2>
+  <ol class="how-it-works-steps">
+    {messages.steps.map((step) => (
+      <li>{step}</li>
+    ))}
+  </ol>
+</section>

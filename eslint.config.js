@@ -37,8 +37,14 @@ export default tseslint.config(
     ...solid,
   },
   {
-    // Domain logic and link encoding know nothing about the DOM and the interface.
-    files: ["src/bill/**", "src/settlement/**", "src/sharing/**"],
+    // Domain logic, link encoding, texts, number formatting and page metadata know nothing about the DOM and the interface.
+    files: [
+      "src/bill/**",
+      "src/i18n/**",
+      "src/seo/**",
+      "src/settlement/**",
+      "src/sharing/**",
+    ],
     rules: {
       "no-restricted-globals": [
         "error",

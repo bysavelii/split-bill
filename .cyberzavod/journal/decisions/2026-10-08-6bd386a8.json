@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-08-6bd386a8",
+  "timestamp": "2026-10-08T11:43:39.603Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "The bill currency lives beside the Bill in app state and in the link, not as a field of Bill; the currency list is src/bill/currency.ts",
+    "description": "Issue #10 forbids changing the calculation logic; amounts stay integers in minor units without conversion"
+  }
+}

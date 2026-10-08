@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatRubles, parseRubles } from "./money";
+import { parseAmount } from "./money";
 
-describe("parseRubles", () => {
+describe("parseAmount", () => {
   it.each([
     ["1500", 150_000],
     ["349,9", 34_990],
@@ -10,7 +10,7 @@ describe("parseRubles", () => {
     ["1 500", 150_000],
     ["  12  ", 1_200],
   ])("accepts %j", (text, expected) => {
-    expect(parseRubles(text)).toBe(expected);
+    expect(parseAmount(text)).toBe(expected);
   });
 
   it.each([
@@ -25,20 +25,12 @@ describe("parseRubles", () => {
     "1.2.3",
     "9".repeat(30),
   ])("rejects %j", (text) => {
-    expect(parseRubles(text)).toBeUndefined();
+    expect(parseAmount(text)).toBeUndefined();
   });
 
-  it("converts kopecks without floating-point errors", () => {
-    expect(parseRubles("0,1")).toBe(10);
-    expect(parseRubles("0,07")).toBe(7);
-    expect(parseRubles("1.15")).toBe(115);
-  });
-});
-
-describe("formatRubles", () => {
-  it("formats rubles with kopecks", () => {
-    const withoutSpecialSpaces = formatRubles(123_450).replace(/\s/gu, " ");
-
-    expect(withoutSpecialSpaces).toBe("1 234,50 ₽");
+  it("converts to minor units without floating-point errors", () => {
+    expect(parseAmount("0,1")).toBe(10);
+    expect(parseAmount("0,07")).toBe(7);
+    expect(parseAmount("1.15")).toBe(115);
   });
 });

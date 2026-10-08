@@ -1,12 +1,12 @@
 import { createEffect, createSignal, on } from "solid-js";
+import type { Messages } from "../i18n/messages";
 import { encodeBill } from "../sharing/bill-code";
 import { buildShareUrl } from "./address";
 import type { BillProps } from "./bill-props";
 import { Field, MessageArea } from "./field";
+import { useLocale } from "./locale-context";
 
 const LINK_INPUT_ID = "share-link";
-const COPIED_TEXT = "Ссылка скопирована";
-const COPY_MANUALLY_TEXT = "Скопируйте ссылку из поля";
 
 /** What the section tells about the link: nothing yet, that it is copied, or where to copy it from. */
 type ShareState =
@@ -16,18 +16,21 @@ type ShareState =
 
 const IDLE_STATE: ShareState = { kind: "idle" };
 
-function describeShareState(state: ShareState): string {
+const NO_MESSAGE = "";
+
+function describeShareState(state: ShareState, messages: Messages): string {
   switch (state.kind) {
     case "idle":
-      return "";
+      return NO_MESSAGE;
     case "copied":
-      return COPIED_TEXT;
+      return messages.share.copied;
     case "copyManually":
-      return COPY_MANUALLY_TEXT;
+      return messages.share.copyManually;
   }
 }
 
 export function ShareSection(props: BillProps) {
+  const { messages } = useLocale();
   const [state, setState] = createSignal(IDLE_STATE);
   let linkInput: HTMLInputElement | undefined;
 
@@ -35,9 +38,10 @@ export function ShareSection(props: BillProps) {
   // and the answer about the old link must be discarded.
   let billGeneration = 0;
 
+  // A link carries the currency too, so a changed currency makes the old link stale as well.
   createEffect(
     on(
-      () => props.bill,
+      [() => props.bill, () => props.currency],
       () => {
         billGeneration += 1;
         setState(IDLE_STATE);
@@ -81,7 +85,7 @@ export function ShareSection(props: BillProps) {
   }
 
   function shareLink(): void {
-    const link = buildShareUrl(encodeBill(props.bill));
+    const link = buildShareUrl(encodeBill(props.bill, props.currency));
     const isClipboardAvailable = "clipboard" in navigator;
     if (!isClipboardAvailable) {
       showLinkField(link);
@@ -93,17 +97,17 @@ export function ShareSection(props: BillProps) {
 
   return (
     <section>
-      <h2>Поделиться</h2>
-      <p class="note">
-        Счёт хранится в самой ссылке — без сервера и регистрации. Кто её
-        откроет, увидит тот же счёт.
-      </p>
+      <h2>{messages.share.heading}</h2>
+      <p class="note">{messages.share.note}</p>
       <button class="button button-primary" type="button" onClick={shareLink}>
-        Поделиться
+        {messages.share.button}
       </button>
-      <MessageArea text={describeShareState(state())} isSuccess={isCopied()} />
+      <MessageArea
+        text={describeShareState(state(), messages)}
+        isSuccess={isCopied()}
+      />
       <Field
-        label="Ссылка на счёт"
+        label={messages.share.linkLabel}
         inputId={LINK_INPUT_ID}
         hidden={isLinkFieldHidden()}
       >

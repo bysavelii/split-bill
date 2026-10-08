@@ -4,10 +4,10 @@ Rules of this project for agents and people. The development process is set by C
 
 ## About the project
 
-split-bill is the web app "Делим счёт" ("Split the bill"): a group enters expenses, and the app calculates who owes whom and how much, and reduces the settlements to the minimal number of transfers. For anyone who travels in a group or goes to a cafe together.
+split-bill is the web app "Split the bill" (in Russian "Делим счёт"): a group enters expenses, and the app calculates who owes whom and how much, and reduces the settlements to the minimal number of transfers. For anyone who travels in a group or goes to a cafe together. The app speaks English (the page `/split-bill/`) and Russian (`/split-bill/ru/`), and a bill is kept in US dollars or Russian rubles.
 
-- Programming language: TypeScript. Stack: Astro (static site generation, build and dev server) with a single Solid island `<App client:load />` for the interface; Vitest with `@solidjs/testing-library` (tests), ESLint with `eslint-plugin-solid` (linter), Prettier with `prettier-plugin-astro` (formatting). Node 22.12+.
-- Language rules: UI texts are in Russian for now (languages come in a follow-up task). Everything else is in English: code comments, messages (errors, logs, tool output), test names, commit messages, the README, this file, PR descriptions and new journal entries. Identifiers (variables, functions, types, file names) are in English too. Old commits and past journal entries stay as they are.
+- Programming language: TypeScript. Stack: Astro (static site generation, build and dev server) with a single Solid island `<App client:load />` for the interface; Vitest with `@solidjs/testing-library` (tests), ESLint with `eslint-plugin-solid` (linter), Prettier with `prettier-plugin-astro` (formatting). Node 22.12+. `@types/jsdom` 30 is used with `jsdom` 29 because there are no 29.x types; check the pair on every `jsdom` upgrade.
+- Language rules: UI texts are in English (the default language) and in Russian, and live only in the dictionaries `src/i18n/en.ts` and `src/i18n/ru.ts` (see "Texts, languages and currencies"). Everything else is in English: code comments, messages (errors, logs, tool output), test names, commit messages, the README, this file, PR descriptions and new journal entries. Identifiers (variables, functions, types, file names) are in English too. Old commits and past journal entries stay as they are.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), entirely in English. Example: `feat(settlement): reduce debts to the minimal number of transfers`.
 
 ## Commands
@@ -28,9 +28,18 @@ Where tasks live, how to read them and how to reference them in commits.
 
 Rules for code and tests of the project: the implementer writes by them, the tester and the reviewer check against them.
 
-- Domain logic lives in `src/bill`, `src/settlement` and `src/sharing` and knows nothing about the DOM, Solid and Astro: ESLint forbids the DOM globals and the imports of `solid-js*`, `astro*` and the interface there. The interface is Solid components in `src/ui/*.tsx` and their plain TypeScript helpers; the only page is `src/pages/index.astro`, which renders the `App` island.
+- Code without the DOM lives in `src/bill`, `src/settlement`, `src/sharing`, `src/i18n` (dictionaries, locales, number and plural formatting) and `src/seo` (page metadata, `robots.txt`). It knows nothing about the DOM, Solid and Astro: ESLint forbids the DOM globals and the imports of `solid-js*`, `astro*` and the interface there. The interface is Solid components in `src/ui/*.tsx` and their plain TypeScript helpers. The only page is `src/pages/[...locale].astro`: it is built once per language from `LOCALES` and renders the `App` island (`<App client:load locale={locale} />`) followed by static Astro markup from `src/components` (`page-head.astro`, `how-it-works.astro`).
 - Tests live next to the code as `*.test.ts` and `*.test.tsx`; DOM tests are marked with `// @vitest-environment jsdom` and render components through `@solidjs/testing-library`. Vitest needs the settings from `vitest.config.js`: without them a second copy of Solid is loaded and nothing reacts.
-- Amounts are stored in kopecks as integers; they are converted to rubles only on input and on display.
+- Amounts are stored as integers in minor units (cents, kopecks), whatever the currency; they are turned into main units only on input (`parseAmount`) and on display (`formatMoney`). There is no conversion between currencies: the currency is a label of the bill, not a rate.
+
+## Texts, languages and currencies
+
+- A text lives in a dictionary, never in a component. Add a text: a key in the `Messages` interface (`src/i18n/messages.ts`) and the value in every dictionary (`src/i18n/en.ts`, `src/i18n/ru.ts`); a missing or extra key is a type error. A plain text is a `string`. A text with a number, a name or an amount is a function of already formatted strings (`spent: (amountText) => ...`), so a language can put the parts anywhere in the phrase. Amounts are formatted with `formatMoney` (`src/i18n/format.ts`), never by hand.
+- Plurals: a counted noun is a set under `plurals` with one form per `Intl.PluralRules` category of the language (English: `one`, `other`; Russian: `one`, `few`, `many`, `other`) and is printed by `formatCount`. `src/i18n/dictionaries.test.ts` fails when a language lacks a form it needs.
+- Add a language: add it to `LOCALES` and `LOCALE_DEFINITIONS` (`src/i18n/locales.ts`: `languageTag`, `ownName`, `pagePath`, `defaultCurrency`, `openGraphLocale`) and write its dictionary in `DICTIONARIES`. The page, the sitemap, the `hreflang` links and the language switch follow from `LOCALES`. Then add `public/og-image-<locale>.png`, a 1200×630 screenshot of the filled page (the test `src/seo/preview-images.test.ts` fails without it), and the two screenshots `docs/screenshot-<locale>.png` and `docs/screenshot-desktop-<locale>.png`.
+- Add a currency: add its ISO 4217 code to `CURRENCIES` (`src/bill/currency.ts`) and its `currencyNames` and `roundingNote` entries to every dictionary. The currency must have exactly two minor-unit digits (`src/bill/currency.test.ts` checks this); one with another number of digits needs a different way to store amounts.
+- The currency is not a field of `Bill`: it lives next to the bill in the app state and in the share link. A new bill starts in the default currency of the page (USD in English, RUB in Russian).
+- Share link: `#<version>.<payload>` in the address fragment. Version 2 (the current one) is `[names, expenses, currency code]`; version 1 (older links, Russian names, no currency) is `[names, expenses]` and still opens, in the default currency of the page. A currency not in `CURRENCIES` makes the link invalid. The language link carries the same fragment, so a switch keeps the bill and the currency. Details are in the comment of `src/sharing/bill-code.ts`.
 
 ## Interface style
 
@@ -39,11 +48,11 @@ A warm, calm look of a "money" app: light and dark themes (by `prefers-color-sch
 ### Tokens
 
 - All values are CSS variables in `:root` and in the dark `:root` inside `@media (prefers-color-scheme: dark)`. Outside these blocks the CSS has neither hex nor `rgb(`; the rest of the CSS uses variables only.
-- Colors: `--color-background`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-border`, `--color-control-border` (fields and the outline of the secondary button: `--color-border` on white gives only 1.28:1), `--color-accent`, `--color-accent-soft`, `--color-on-accent`, `--color-gives` ("отдаёт", gives), `--color-receives` ("получает", receives), `--color-error`, `--color-warning-background`, `--color-warning-border`, `--shadow-card`.
+- Colors: `--color-background`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-border`, `--color-control-border` (fields and the outline of the secondary button: `--color-border` on white gives only 1.28:1), `--color-accent`, `--color-accent-soft`, `--color-on-accent`, `--color-gives` ("gives", in Russian "отдаёт"), `--color-receives` ("receives", in Russian "получает"), `--color-error`, `--color-warning-background`, `--color-warning-border`, `--shadow-card`.
 - Avatars: eight soft tones `--color-avatar-1…8` and `--color-avatar-text`; there is one palette for both themes, and the text on it is always dark.
 - Radii: `--radius-card` 12 px, `--radius-control` 10 px, `--radius-pill`. Spacing: `--space-1…6` = 4, 8, 12, 16, 24, 32 px.
 - Typography is the system font (`system-ui`): page heading 28 px, section heading 20 px, text 16 px, captions 14 px. Amounts use `font-variant-numeric: tabular-nums` and are right-aligned (class `.amount`).
-- Sizes: `--touch-target` 44 px, `--icon-size`, `--avatar-size`; `--duration-fast` 150 ms; column widths `--column-width` and `--column-width-wide`; sizes of the "Как посчитано" ("How it was calculated") table `--breakdown-name-width`, `--breakdown-column-gap`, `--breakdown-column-gap-compact`; `--overview-separator-offset` (the dot between overview items), `--button-hover-brightness` (darkening of the primary button on hover).
+- Sizes: `--touch-target` 44 px, `--icon-size`, `--avatar-size`; `--duration-fast` 150 ms; column widths `--column-width` and `--column-width-wide`; sizes of the "How it is calculated" ("Как посчитано") table `--breakdown-name-width`, `--breakdown-column-gap`, `--breakdown-column-gap-compact`; `--overview-separator-offset` (the dot between overview items), `--button-hover-brightness` (darkening of the primary button on hover).
 
 Contrast (WCAG): text no lower than 4.5:1, controls and icons no lower than 3:1. It is calculated by the formula: L = 0.2126·R + 0.7152·G + 0.0722·B over linearized sRGB, ratio (L1 + 0.05) / (L2 + 0.05). If you change a color, recalculate the pairs below and fix the table.
 
@@ -71,33 +80,46 @@ Contrast (WCAG): text no lower than 4.5:1, controls and icons no lower than 3:1.
 
 ### Components
 
-- Buttons: `.button.button-primary` (filled with the accent: "Добавить", "Добавить трату", "Поделиться"), `.button.button-secondary` (outlined: "Закрыть"), `.icon-button` (a 44×44 cross without text, the name is in `aria-label`).
+- Buttons: `.button.button-primary` (filled with the accent: "Add" / "Добавить", "Add expense" / "Добавить трату", "Share" / "Поделиться"), `.button.button-secondary` (outlined: "Close" / "Закрыть"), `.icon-button` (a 44×44 cross without text, the name is in `aria-label`).
 - Avatar is a circle with the first letter of the name: the `Avatar` component from `src/ui/avatar.tsx`. The tone is taken from the name and is always the same.
-- Chips: `.chip` is a participant with a cross; `.chip-toggle` is the "за кого" ("for whom") toggle on top of a real `input[type=checkbox]`.
-- Expense row `.expense`: the payer's avatar, the name and the caption "за всех" / "за: …" ("for everyone" / "for: …"), the amount on the right, a cross.
-- Summary: transfer cards `.transfer`, the `.transfers-count` line, the expandable `details.breakdown` block "Как посчитано" with a table. "Получает" (receives) and "отдаёт" (gives) differ by color, sign (+ and −) and word, not by color alone.
+- Chips: `.chip` is a participant with a cross; `.chip-toggle` is the "For whom" ("За кого") toggle on top of a real `input[type=checkbox]`.
+- Expense row `.expense`: the payer's avatar, the name and the caption "for everyone" / "for: …" ("за всех" / "за: …"), the amount on the right, a cross.
+- Summary: transfer cards `.transfer`, the `.transfers-count` line, the expandable `details.breakdown` block "How it is calculated" ("Как посчитано") with a table. "Receives" ("получает") and "gives" ("отдаёт") differ by color, sign (+ and −) and word, not by color alone.
 - Empty states are `p.empty-state` with an icon and a friendly hint on what to do next.
-- Layout: the header, then `.layout` made of `.layout-main` (participants and expenses) and `.layout-side` (the summary and "Поделиться").
+- Header: `.page-toolbar` (a row that wraps instead of overflowing) with the language link `.language-link` (one link per other language, named in its own language: "Русский" / "English") and the currency select `.currency-select` (a native `select`; its label is `.visually-hidden`); then the title, the subtitle and the overview. Both controls are at least 44 px tall.
+- Layout: the header, then `.layout` made of `.layout-main` (participants and expenses) and `.layout-side` (the summary and "Share"), then `.how-it-works` ("How it works": a heading and three numbered steps, static markup outside the island, so it is in the page without scripts).
 
 ### Rules
 
 - In CSS, tokens only; a new color or size first becomes a token, and for a color also a row of the contrast table.
-- The favicon (`public/favicon.svg`) and `<meta name="theme-color">` in `src/pages/index.astro` cannot see CSS variables and repeat the accent `#0E7C66` and the text `#1C1917` of the light theme: when these tokens change, they are changed together.
+- The favicon (`public/favicon.svg`) and `<meta name="theme-color">` in `src/components/page-head.astro` cannot see CSS variables and repeat the accent `#0E7C66` and the text `#1C1917` of the light theme: when these tokens change, they are changed together.
 - Icons only through the `Icon` component from `src/ui/icons.tsx`; they are hidden from screen readers (`aria-hidden`); there are no emoji in the interface.
 - Avatars only through `src/ui/avatar.tsx`. The number of tones `AVATAR_TONE_COUNT` must match the number of `--color-avatar-N` in `style.css`.
 - Focus is visible on all interactive elements (`:focus-visible`, a 2 px outline in the accent color); the touch target is at least 44 px.
 - Motion: 150 ms transitions on buttons and chips are declared only inside `@media (prefers-reduced-motion: no-preference)`.
 - Layout: up to 900 px one column (from 360 px, with no horizontal page scroll), from 900 px two; the right column is sticky and scrolls on its own when there is not enough height. The 900 px breakpoint is written as a literal in `@media`, because a variable does not work there.
-- Compact mode up to 480 px (`@media (max-width: 480px)`): narrower page margins, the "Как посчитано" table in a 13 px font (`--font-size-small`) and a smaller gap between the numeric columns (`--breakdown-column-gap-compact`), so that at 360 px it fits without scrolling. The breakpoint is written as a literal for the same reason.
+- Compact mode up to 480 px (`@media (max-width: 480px)`): narrower page margins, the "How it is calculated" table in a 13 px font (`--font-size-small`) and a smaller gap between the numeric columns (`--breakdown-column-gap-compact`), so that at 360 px it fits without scrolling. The breakpoint is written as a literal for the same reason.
 - Amounts are `tabular-nums`, right-aligned, and never wrap in the middle of a number.
-- State texts are friendly and say what to do next; names cannot be declined, so the captions of the delete buttons stay as they are.
+- State texts are friendly and say what to do next; names cannot be declined, so the captions of the delete buttons stay as they are in both languages.
+- Texts differ in length between languages: the layout must not depend on a caption length (the header with both controls fits at 360 px in English and in Russian, the longest being "Российский рубль").
 
 ### How to check the look
 
-Tests do not check the look, so after changing styles look at it with your own eyes:
+Tests do not check the look, so after changing styles or texts look at it with your own eyes:
 
-1. `npm run build`, then `npx astro preview --port 4173 --strictPort` in the background; the page is at `http://localhost:4173/split-bill/` (the site is built with the base path `/split-bill/`).
-2. Put the Playwright script in a temporary directory outside the repository and do not add Playwright (or screenshot-comparison libraries) to the project dependencies: use the globally installed Playwright (its directory is `npm root -g`). Open the page in Chromium with `colorScheme: "light"` and `"dark"` at widths 360, 768 and 1280 px: empty and filled (the example bill is the literal code from the test "share links from the previous version" in `src/ui/app.test.tsx`, put after `#` in the link), with "Как посчитано" closed and open, and with stress data: a 40-character name without spaces and five expenses.
-3. On each screenshot check `document.documentElement.scrollWidth <= window.innerWidth` and the sizes of buttons, chips and fields through `getBoundingClientRect` (at least 44 px).
-4. Take full-page screenshots (`fullPage`) and look at them: is there overflow, truncated captions, misaligned amounts, weak contrast, overlaps of the sticky column?
-5. Update the screenshots in `docs/` like this: `docs/screenshot.png` is the light theme, 390×844, scale 2, the first screen; `docs/screenshot-desktop.png` is the light theme, 1280×800, "Как посчитано" closed.
+1. `npm run build`, then `npx astro preview --port 4173 --strictPort` in the background (stop it with `npx astro preview stop`). The pages are `http://localhost:4173/split-bill/` (English) and `http://localhost:4173/split-bill/ru/` (Russian); the site is built with the base path `/split-bill/`.
+2. Put the Playwright script in a temporary directory outside the repository and do not add Playwright, Lighthouse or screenshot-comparison libraries to the project dependencies: use the globally installed Playwright (its directory is `npm root -g`).
+3. Example bills go after `#` in the address:
+   - Russian, version 1 (`LITERAL_CODE` in `src/ui/app.test.tsx`, test "share links from the previous version"), opens in the default currency of the page (rubles on the Russian one):
+     `1.W1si0JDQvdGPIiwi0JHQvtGA0Y8iLCLQktC10YDQsCIsItCT0L7RiNCwIl0sW1swLDQ4MDAwMCxbMCwxLDIsM11dLFsxLDEyNTA1MCxbMCwxLDJdXSxbMiw2MDAwMCxbMiwzXV1dXQ`
+   - English, version 2 with dollars (Ann paid 480.00 for everyone, Ben paid 125.05 for Ann, Ben and Clara, Clara paid 60.00 for Clara and Dan):
+     `2.W1siQW5uIiwiQmVuIiwiQ2xhcmEiLCJEYW4iXSxbWzAsNDgwMDAsWzAsMSwyLDNdXSxbMSwxMjUwNSxbMCwxLDJdXSxbMiw2MDAwLFsyLDNdXV0sIlVTRCJd`
+4. The matrix: widths and heights 360×800, 768×1024, 1280×800 × `colorScheme` `"light"` and `"dark"` × empty and filled × English and Russian page × USD and RUB (switch with the currency select), the filled ones with "How it is calculated" closed and open; plus stress data at 360: a 40-character name without spaces and five expenses. Look at long captions too: the header with the language link and the currency select must fit at 360 px in both languages.
+5. On each screenshot check `document.documentElement.scrollWidth <= window.innerWidth` and the sizes of buttons, chips, fields, the select and the language link through `getBoundingClientRect` (at least 44 px).
+6. Take full-page screenshots (`fullPage`) and look at them: is there overflow, truncated captions, misaligned amounts, weak contrast, overlaps of the sticky column? (In a full-page shot at 1280×800 the sticky column is cut at the viewport height: it scrolls on its own, this is not a defect.)
+7. Without scripts (Playwright `javaScriptEnabled: false`) both pages must still show the `h1`, the subtitle and the "How it works" section with three steps.
+8. The preview images `public/og-image-en.png` and `public/og-image-ru.png` are regenerated when the look of the first screen changes: Chromium viewport 1200×630, scale 1, light theme, `page.screenshot` of the viewport (not `fullPage`) on the page with the example bill of its language (the English version 2 bill on the English page, `LITERAL_CODE` on the Russian one), after waiting for `.transfer`.
+9. Update the screenshots in `docs/` (all of them: the light theme, filled with the example bill of the language):
+   - `docs/screenshot.png` (English) and `docs/screenshot-ru.png` (Russian): 390×844, scale 2, the first screen (viewport only);
+   - `docs/screenshot-desktop.png` (English) and `docs/screenshot-desktop-ru.png` (Russian): 1280×800, "How it is calculated" closed.
+10. Lighthouse (mobile, the default): `CHROME_PATH=<chromium> npx -y lighthouse@13 <url> --chrome-flags="--headless=new --no-sandbox" --output=html --output=json --output-path=<directory outside the repository>/<name>` for both pages, three runs each. Targets: Performance, Accessibility, Best Practices and SEO all at least 95, Accessibility and SEO 100. Keep the HTML of the run with the median Performance as `docs/lighthouse/en.report.html` and `docs/lighthouse/ru.report.html` (the folder is in `.prettierignore`) and put the four scores into the PR description.

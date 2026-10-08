@@ -9,32 +9,29 @@ import {
   type Participant,
   type ParticipantId,
 } from "../bill/bill";
-import { formatRubles, parseRubles } from "../bill/money";
+import { parseAmount } from "../bill/money";
+import { readCurrencySymbol } from "../i18n/format";
+import type { Messages } from "../i18n/messages";
+import { useAmountFormatter, type AmountFormatter } from "./amount-formatter";
 import { Avatar } from "./avatar";
 import { createBillMessage } from "./bill-message";
 import type { BillProps } from "./bill-props";
 import { EmptyState } from "./empty-state";
 import { Field, MessageArea } from "./field";
 import { Icon } from "./icons";
+import { useLocale } from "./locale-context";
 import { RemoveButton } from "./remove-button";
-
-const NO_PARTICIPANTS_TEXT = "Сначала добавьте участников";
-const NO_EXPENSES_TEXT =
-  "Трат пока нет. Добавьте первую: кто платил, сколько и за кого";
 
 const PAYER_SELECT_ID = "expense-payer";
 const AMOUNT_INPUT_ID = "expense-amount";
 
-const AMOUNT_ERROR = "Введите сумму больше нуля, например 1500 или 349,90";
-const NO_BENEFICIARIES_ERROR = "Отметьте, за кого платили";
-const TOTAL_TOO_LARGE_ERROR =
-  "Слишком большая сумма: общий итог счёта не поместится в расчёт";
-
 /** Everyone is a beneficiary by default, so the form remembers only those who were unchecked. */
 const NO_UNCHECKED_IDS: ReadonlySet<ParticipantId> = new Set();
 
+type ExpenseProblem = "invalidAmount" | "noBeneficiaries";
+
 type ExpenseReading =
-  { readonly expense: Expense } | { readonly error: string };
+  { readonly expense: Expense } | { readonly problem: ExpenseProblem };
 
 interface ExpenseFormFacts {
   readonly amountText: string;
@@ -51,6 +48,7 @@ interface BeneficiaryToggleProps {
 interface ExpenseRowProps {
   readonly bill: Bill;
   readonly expense: Expense;
+  readonly formatAmount: AmountFormatter;
   readonly onRemove: () => void;
 }
 
@@ -81,12 +79,24 @@ function withoutId(
   return new Set([...ids].filter((candidate) => candidate !== id));
 }
 
+function describeExpenseProblem(
+  problem: ExpenseProblem,
+  messages: Messages,
+): string {
+  switch (problem) {
+    case "invalidAmount":
+      return messages.expenses.amountError;
+    case "noBeneficiaries":
+      return messages.expenses.noBeneficiariesError;
+  }
+}
+
 function readExpense(facts: ExpenseFormFacts): ExpenseReading {
-  const amount = parseRubles(facts.amountText);
-  if (amount === undefined) return { error: AMOUNT_ERROR };
+  const amount = parseAmount(facts.amountText);
+  if (amount === undefined) return { problem: "invalidAmount" };
 
   if (facts.beneficiaryIds.length === 0) {
-    return { error: NO_BENEFICIARIES_ERROR };
+    return { problem: "noBeneficiaries" };
   }
 
   const expense: Expense = {
@@ -99,24 +109,37 @@ function readExpense(facts: ExpenseFormFacts): ExpenseReading {
   return { expense };
 }
 
-function describeBeneficiaries(bill: Bill, expense: Expense): string {
+function describeBeneficiaries(
+  bill: Bill,
+  expense: Expense,
+  messages: Messages,
+): string {
   const isForEveryone =
     expense.beneficiaryIds.length === bill.participants.length;
-  if (isForEveryone) return "за всех";
+  if (isForEveryone) return messages.expenses.forEveryone;
 
   const beneficiaryNames = expense.beneficiaryIds.map((id) =>
     getParticipantName(bill, id),
   );
 
-  return `за: ${beneficiaryNames.join(", ")}`;
+  return messages.expenses.forBeneficiaries(beneficiaryNames);
 }
 
-function describeExpense(bill: Bill, expense: Expense): string {
+function describeRemoval(
+  bill: Bill,
+  expense: Expense,
+  formatAmount: AmountFormatter,
+  messages: Messages,
+): string {
   const payerName = getParticipantName(bill, expense.payerId);
-  const amountText = formatRubles(expense.amount);
-  const beneficiariesText = describeBeneficiaries(bill, expense);
+  const amountText = formatAmount(expense.amount);
+  const beneficiariesText = describeBeneficiaries(bill, expense, messages);
 
-  return `${payerName} — ${amountText}, ${beneficiariesText}`;
+  return messages.expenses.removeLabel(
+    payerName,
+    amountText,
+    beneficiariesText,
+  );
 }
 
 function BeneficiaryToggle(props: BeneficiaryToggleProps) {
@@ -139,6 +162,7 @@ function BeneficiaryToggle(props: BeneficiaryToggleProps) {
 }
 
 function ExpenseRow(props: ExpenseRowProps) {
+  const { messages } = useLocale();
   const payerName = () => getParticipantName(props.bill, props.expense.payerId);
 
   return (
@@ -147,14 +171,19 @@ function ExpenseRow(props: ExpenseRowProps) {
       <span class="expense-text">
         <span class="expense-payer">{payerName()}</span>
         <span class="expense-beneficiaries">
-          {describeBeneficiaries(props.bill, props.expense)}
+          {describeBeneficiaries(props.bill, props.expense, messages)}
         </span>
       </span>
       <span class="amount expense-amount">
-        {formatRubles(props.expense.amount)}
+        {props.formatAmount(props.expense.amount)}
       </span>
       <RemoveButton
-        ariaLabel={`Удалить трату: ${describeExpense(props.bill, props.expense)}`}
+        ariaLabel={describeRemoval(
+          props.bill,
+          props.expense,
+          props.formatAmount,
+          messages,
+        )}
         onClick={props.onRemove}
       />
     </li>
@@ -162,6 +191,8 @@ function ExpenseRow(props: ExpenseRowProps) {
 }
 
 export function ExpensesSection(props: BillProps) {
+  const { locale, messages } = useLocale();
+  const formatAmount = useAmountFormatter(() => props.currency);
   // The list of participants changes only when its reference changes, not on any write to the bill.
   const participants = createMemo(() => props.bill.participants);
   const [chosenPayerId, setChosenPayerId] = createSignal<ParticipantId>();
@@ -174,6 +205,8 @@ export function ExpensesSection(props: BillProps) {
   );
   const hasParticipants = () => participants().length > 0;
   const hasExpenses = () => props.bill.expenses.length > 0;
+  const amountLabel = () =>
+    messages.expenses.amountLabel(readCurrencySymbol(props.currency, locale));
   const isExpensesHintHidden = () => !hasParticipants() || hasExpenses();
 
   // Rows of the list are reused for the same participants, so a changed list resets the checks explicitly.
@@ -214,14 +247,14 @@ export function ExpensesSection(props: BillProps) {
       payerId: currentPayerId,
       beneficiaryIds: listBeneficiaryIds(),
     });
-    if ("error" in reading) {
-      setMessage(reading.error);
+    if ("problem" in reading) {
+      setMessage(describeExpenseProblem(reading.problem, messages));
       return;
     }
 
     const changedBill = addExpense(props.bill, reading.expense);
     if (!isTotalSpentWithinLimit(changedBill)) {
-      setMessage(TOTAL_TOO_LARGE_ERROR);
+      setMessage(messages.expenses.totalTooLargeError);
       return;
     }
 
@@ -232,10 +265,10 @@ export function ExpensesSection(props: BillProps) {
 
   return (
     <section>
-      <h2>Траты</h2>
+      <h2>{messages.expenses.heading}</h2>
       <EmptyState
         icon="people"
-        text={NO_PARTICIPANTS_TEXT}
+        text={messages.expenses.noParticipantsHint}
         hidden={hasParticipants()}
       />
       <form
@@ -246,7 +279,7 @@ export function ExpensesSection(props: BillProps) {
           submitExpense();
         }}
       >
-        <Field label="Кто платил" inputId={PAYER_SELECT_ID}>
+        <Field label={messages.expenses.payerLabel} inputId={PAYER_SELECT_ID}>
           <select
             id={PAYER_SELECT_ID}
             onChange={(event) => {
@@ -265,7 +298,7 @@ export function ExpensesSection(props: BillProps) {
             </For>
           </select>
         </Field>
-        <Field label="Сколько, ₽" inputId={AMOUNT_INPUT_ID}>
+        <Field label={amountLabel()} inputId={AMOUNT_INPUT_ID}>
           <input
             id={AMOUNT_INPUT_ID}
             type="text"
@@ -278,7 +311,7 @@ export function ExpensesSection(props: BillProps) {
           />
         </Field>
         <fieldset>
-          <legend>За кого</legend>
+          <legend>{messages.expenses.beneficiariesLegend}</legend>
           <div class="chips">
             <For each={participants()}>
               {(participant) => (
@@ -294,13 +327,13 @@ export function ExpensesSection(props: BillProps) {
           </div>
         </fieldset>
         <button class="button button-primary" type="submit">
-          Добавить трату
+          {messages.expenses.addButton}
         </button>
         <MessageArea text={message()} />
       </form>
       <EmptyState
         icon="receipt"
-        text={NO_EXPENSES_TEXT}
+        text={messages.expenses.emptyHint}
         hidden={isExpensesHintHidden()}
       />
       <ul class="expenses">
@@ -309,6 +342,7 @@ export function ExpensesSection(props: BillProps) {
             <ExpenseRow
               bill={props.bill}
               expense={expense}
+              formatAmount={formatAmount}
               onRemove={() => {
                 props.onBillChange(removeExpense(props.bill, expense.id));
               }}

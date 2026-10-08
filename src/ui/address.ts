@@ -1,4 +1,5 @@
 /** The only place where the app reads and changes the page address. */
+import { LOCALE_DEFINITIONS, type Locale } from "../i18n/locales";
 
 const FRAGMENT_PREFIX_LENGTH = "#".length;
 
@@ -19,4 +20,15 @@ export function buildShareUrl(code: string): string {
   url.hash = code;
 
   return url.href;
+}
+
+/** The address of the page of a language; with a code it opens that bill there. */
+export function buildLanguageUrl(
+  locale: Locale,
+  code: string | undefined,
+): string {
+  const pageUrl = `${import.meta.env.BASE_URL}${LOCALE_DEFINITIONS[locale].pagePath}`;
+  if (code === undefined) return pageUrl;
+
+  return `${pageUrl}#${code}`;
 }
