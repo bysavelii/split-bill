@@ -11,6 +11,7 @@ const COPY_MANUALLY_TEXT = "Скопируйте ссылку из поля";
 export function createShareSection(actions: BillActions): Section {
   const shareButton = createElement("button", {
     text: "Поделиться",
+    className: "button button-primary",
     attributes: { type: "button" },
   });
   const message = createMessageArea();

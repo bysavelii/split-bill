@@ -47,6 +47,7 @@ function createExpenseForm(): ExpenseForm {
   const beneficiaryGroup = createElement("fieldset", {}, [beneficiaryLegend]);
   const addButton = createElement("button", {
     text: "Добавить трату",
+    className: "button button-primary",
     attributes: { type: "submit" },
   });
   const message = createMessageArea();
@@ -175,6 +176,7 @@ function createExpenseRow(
   const description = describeExpense(bill, expense);
   const removeButton = createElement("button", {
     text: "Удалить",
+    className: "button button-secondary",
     attributes: {
       type: "button",
       "aria-label": `Удалить трату: ${description}`,

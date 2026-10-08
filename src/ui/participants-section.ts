@@ -30,6 +30,7 @@ export function createParticipantsSection(actions: BillActions): Section {
   });
   const addButton = createElement("button", {
     text: "Добавить",
+    className: "button button-primary",
     attributes: { type: "submit" },
   });
   const message = createMessageArea();
@@ -79,6 +80,7 @@ export function createParticipantsSection(actions: BillActions): Section {
   function createRow(participant: Participant): HTMLLIElement {
     const removeButton = createElement("button", {
       text: "Удалить",
+      className: "button button-secondary",
       attributes: {
         type: "button",
         "aria-label": `Удалить участника ${participant.name}`,

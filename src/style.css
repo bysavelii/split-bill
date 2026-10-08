@@ -1,23 +1,78 @@
 :root {
-  --color-text: #1f2933;
-  --color-text-muted: #52606d;
-  --color-background: #f5f7fa;
+  /* Подсказывает браузеру тему для нативных элементов: список select, полосы прокрутки. */
+  color-scheme: light dark;
+
+  --color-background: #f6f5f2;
   --color-surface: #fff;
-  --color-border: #d9e2ec;
-  --color-divider: #e4e7eb;
+  --color-text: #1c1917;
+  --color-text-muted: #6b6460;
+  --color-border: #e7e3dd;
+  /* Граница полей и второстепенной кнопки: у --color-border на белом лишь 1,28:1, а для элементов управления нужно не меньше 3:1. */
+  --color-control-border: #8a817a;
+  --color-accent: #0e7c66;
+  --color-accent-soft: #e3f3ee;
+  --color-on-accent: #fff;
+  --color-gives: #c2410c;
+  --color-receives: #0e7c66;
   --color-error: #b42318;
-  --color-success: #067647;
   --color-warning-background: #fff4e5;
   --color-warning-border: #f0b429;
 
-  --radius-large: 0.5rem;
-  --radius-small: 0.25rem;
-  --section-gap: 1.5rem;
-  --column-width: 40rem;
+  /* Одна палитра аватаров на обе темы, текст на ней всегда тёмный. Число оттенков зашито в AVATAR_TONE_COUNT (src/ui/avatar.ts). */
+  --color-avatar-text: #1c1917;
+  --color-avatar-1: #f8d3bf;
+  --color-avatar-2: #f3e1a9;
+  --color-avatar-3: #cbebd9;
+  --color-avatar-4: #c6e3f2;
+  --color-avatar-5: #d2d9f7;
+  --color-avatar-6: #e3d3f2;
+  --color-avatar-7: #f5cfdb;
+  --color-avatar-8: #dce5c7;
+
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 6%);
+
+  --radius-card: 12px;
+  --radius-control: 10px;
+  --radius-pill: 999px;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --font-size-page-title: 1.75rem;
+  --font-size-section-title: 1.25rem;
+  --font-size-body: 1rem;
+  --font-size-caption: 0.875rem;
 
   /* 44 px — минимальный размер цели касания для пальца. */
   --touch-target: 2.75rem;
-  --checkbox-size: 1.25rem;
+  --icon-size: 1.25rem;
+  --column-width: 40rem;
+  --duration-fast: 150ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #171513;
+    --color-surface: #221f1c;
+    --color-text: #f2efea;
+    --color-text-muted: #b1a9a1;
+    --color-border: #3a3531;
+    --color-control-border: #857c74;
+    --color-accent: #4cc9a9;
+    --color-accent-soft: #17362f;
+    --color-on-accent: #0b1f1a;
+    --color-gives: #fb9a5b;
+    --color-receives: #4cc9a9;
+    --color-error: #f97066;
+    --color-warning-background: #3a2a12;
+    --color-warning-border: #b7791f;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 40%);
+  }
 }
 
 *,
@@ -29,6 +84,8 @@
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
+  font-size: var(--font-size-body);
+  line-height: 1.5;
   color: var(--color-text);
   background: var(--color-background);
   /* Без этого длинное имя без пробелов растянет страницу шире экрана телефона. */
@@ -36,74 +93,165 @@ body {
 }
 
 main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   max-width: var(--column-width);
   margin: 0 auto;
-  padding: var(--section-gap) 1rem;
+  padding: var(--space-5) var(--space-4);
 }
 
 section {
-  margin-bottom: var(--section-gap);
-  padding: 1rem;
+  padding: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-large);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 h1,
 h2 {
   margin-top: 0;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: var(--font-size-page-title);
+}
+
+h2 {
+  margin-bottom: var(--space-3);
+  font-size: var(--font-size-section-title);
+}
+
+p {
+  margin: 0 0 var(--space-3);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
+}
+
+.field label,
+legend {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
 }
 
 fieldset {
   /* По умолчанию у fieldset min-width: min-content, и длинные имена его распирают. */
   min-width: 0;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-small);
+  border-radius: var(--radius-control);
 }
 
 .checkbox {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   min-height: var(--touch-target);
 }
 
 .checkbox input {
   flex-shrink: 0;
-  width: var(--checkbox-size);
-  height: var(--checkbox-size);
+  width: var(--icon-size);
+  height: var(--icon-size);
   margin: 0;
+  accent-color: var(--color-accent);
 }
 
 input[type="text"],
 select {
   width: 100%;
   min-height: var(--touch-target);
-  padding: 0.4rem;
+  padding: 0 var(--space-3);
   font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
 }
 
-button {
+input[readonly] {
+  background: var(--color-background);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: var(--touch-target);
-  padding: 0.4rem 0.8rem;
+  padding: 0 var(--space-4);
   font: inherit;
+  font-weight: 600;
+  line-height: 1.25;
   cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+}
+
+.button-primary {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}
+
+.button-primary:hover {
+  filter: brightness(0.92);
+}
+
+.button-secondary {
+  color: var(--color-text);
+  background: transparent;
+  border-color: var(--color-control-border);
+}
+
+.button-secondary:hover {
+  background: var(--color-accent-soft);
+}
+
+.icon-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  padding: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-pill);
+}
+
+.icon-button:hover {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+}
+
+.icon-button svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
 }
 
 .list {
   padding: 0;
+  margin: 0;
   list-style: none;
 }
 
@@ -111,9 +259,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--color-divider);
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .list li > span {
@@ -125,35 +273,35 @@ button {
 }
 
 .message {
-  min-height: 1.2em;
+  min-height: 1.5em;
   margin: 0;
+  font-size: var(--font-size-caption);
   color: var(--color-error);
 }
 
 .message.message-success {
-  color: var(--color-success);
+  color: var(--color-accent);
 }
 
 h3 {
-  margin: 1.25rem 0 0.5rem;
+  margin: var(--space-4) 0 var(--space-2);
 }
 
 .note {
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
-  font-size: 0.9rem;
 }
 
 .notice {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: var(--section-gap);
-  padding: 0.75rem 1rem;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   background: var(--color-warning-background);
   border: 1px solid var(--color-warning-border);
-  border-radius: var(--radius-large);
+  border-radius: var(--radius-card);
 }
 
 .notice p {
@@ -162,6 +310,27 @@ h3 {
 
 .notice button {
   flex-shrink: 0;
+}
+
+/* Суммы выровнены по правому краю и одной ширины цифр, чтобы столбец читался. */
+.amount {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Без правила про движение пользователь с «уменьшить анимацию» не получает переходов. */
+@media (prefers-reduced-motion: no-preference) {
+  .button,
+  .icon-button,
+  input[type="text"],
+  select {
+    transition:
+      background-color var(--duration-fast),
+      border-color var(--duration-fast),
+      color var(--duration-fast),
+      filter var(--duration-fast);
+  }
 }
 
 /* Текст для экранного диктора: на экране не виден, но остаётся в дереве доступности. */
