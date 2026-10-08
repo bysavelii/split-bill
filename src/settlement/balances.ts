@@ -4,11 +4,11 @@ import { splitAmount } from "./shares";
 
 export interface Balance {
   readonly participantId: ParticipantId;
-  /** Сколько участник заплатил из своих денег. */
+  /** How much the participant paid out of their own money. */
   readonly paid: Kopecks;
-  /** Сколько из всех трат пришлось на участника: сумма его долей. */
+  /** How much of all the expenses fell on the participant: the sum of their shares. */
   readonly share: Kopecks;
-  /** Больше нуля — участнику должны, меньше нуля — должен он. */
+  /** Above zero: the participant is owed; below zero: they owe. */
   readonly amount: Kopecks;
 }
 

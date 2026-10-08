@@ -1,4 +1,4 @@
-name: Выкладка на GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build:
-    name: Проверка и сборка
+    name: Check and build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -25,7 +25,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Проверки уже включают сборку в dist.
+      # The checks already include the build into dist.
       - run: make check
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
@@ -33,7 +33,7 @@ jobs:
           path: dist
 
   deploy:
-    name: Выкладка
+    name: Deploy
     needs: build
     runs-on: ubuntu-latest
     environment:

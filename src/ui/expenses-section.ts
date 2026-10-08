@@ -257,7 +257,7 @@ export function createExpensesSection(actions: BillActions): Section {
     list,
   ]);
 
-  // Списки неизменяемы, поэтому новая ссылка означает, что список участников поменялся.
+  // Lists are immutable, so a new reference means the list of participants changed.
   let renderedParticipants: readonly Participant[] | undefined;
 
   expenseForm.form.addEventListener("submit", (event) => {

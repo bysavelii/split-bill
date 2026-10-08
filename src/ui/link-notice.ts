@@ -22,7 +22,7 @@ export function describeBillCodeError(error: BillCodeError): string {
   }
 }
 
-/** Сообщение над секциями; «Закрыть» только прячет его. */
+/** A message above the sections; "Закрыть" only hides it. */
 export function createLinkNotice(): LinkNotice {
   const text = createElement("p");
   const closeButton = createElement("button", {

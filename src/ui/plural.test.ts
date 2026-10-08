@@ -13,7 +13,7 @@ describe("formatCount", () => {
     [21, "21 перевод"],
     [22, "22 перевода"],
     [25, "25 переводов"],
-  ])("склоняет переводы для %i", (count, expected) => {
+  ])("inflects transfers for %i", (count, expected) => {
     expect(formatCount(count, TRANSFER_FORMS)).toBe(expected);
   });
 
@@ -25,7 +25,7 @@ describe("formatCount", () => {
     [21, "21 человек"],
     [22, "22 человека"],
     [25, "25 человек"],
-  ])("склоняет людей для %i", (count, expected) => {
+  ])("inflects people for %i", (count, expected) => {
     expect(formatCount(count, PERSON_FORMS)).toBe(expected);
   });
 });

@@ -1,15 +1,15 @@
-/** Единственное место, где приложение читает и меняет адрес страницы. */
+/** The only place where the app reads and changes the page address. */
 
 const FRAGMENT_PREFIX_LENGTH = "#".length;
 
-/** Код счёта из фрагмента адреса; `undefined`, если фрагмента нет. */
+/** The bill code from the address fragment; `undefined` if there is no fragment. */
 export function readBillCode(): string | undefined {
   const code = location.hash.slice(FRAGMENT_PREFIX_LENGTH);
 
   return code === "" ? undefined : code;
 }
 
-/** Заменяет фрагмент текущей записи истории: путь и query остаются, «Назад» не перебирает правки. */
+/** Replaces the fragment of the current history entry: path and query stay, "Back" does not step through edits. */
 export function writeBillCode(code: string): void {
   history.replaceState(history.state, "", buildShareUrl(code));
 }

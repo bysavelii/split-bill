@@ -35,10 +35,10 @@ const BREAKDOWN_COLUMNS = ["Участник", "Заплатил", "Доля", "
 
 export function createSummarySection(): Section {
   const content = createElement("div");
-  // Диктор объявляет только эту короткую сводку, а не всю секцию. Область
-  // создаётся с текстом пустого счёта, чтобы при загрузке ничего не объявлялось
-  // лишний раз. Изменения после загрузки (правки счёта, переход по другой
-  // ссылке через hashchange) объявляются.
+  // The screen reader announces only this short overview, not the whole section. The area
+  // is created with the text of the empty bill so that nothing is announced an extra time
+  // on load. Changes after load (bill edits, navigating to another link through
+  // hashchange) are announced.
   const announcement = createElement("div", {
     className: "visually-hidden",
     text: NO_EXPENSES_ANNOUNCEMENT,
@@ -51,7 +51,7 @@ export function createSummarySection(): Section {
   ]);
 
   function announce(text: string): void {
-    // Повторная запись того же текста заставила бы диктор прочитать его снова.
+    // Writing the same text again would make the screen reader read it again.
     if (announcement.textContent === text) return;
 
     announcement.textContent = text;

@@ -1,15 +1,15 @@
 /**
- * Код счёта для ссылки, формат версии 1: `<версия>.<нагрузка>`, например `1.W1tdLFtdXQ`.
+ * The bill code for a link, format version 1: `<version>.<payload>`, for example `1.W1tdLFtdXQ`.
  *
- * Полезная нагрузка — JSON `[имена, траты]`, переведённый в UTF-8 и затем в base64url без `=`.
- * Трата записывается как `[индекс плательщика, копейки, индексы получателей]`:
- * участники переиндексируются по порядку, поэтому идентификаторы в ссылку не попадают.
- * Порядок участников, трат и получателей сохраняется, потому что от него зависит,
- * кому достаются лишние копейки.
+ * The payload is the JSON `[names, expenses]`, converted to UTF-8 and then to base64url without `=`.
+ * An expense is written as `[payer index, kopecks, recipient indexes]`:
+ * participants are reindexed in order, so identifiers do not get into the link.
+ * The order of participants, expenses and recipients is kept, because it decides
+ * who gets the extra kopecks.
  *
- * Версия стоит до точки и открытым текстом, а не внутри base64: ссылку другой версии
- * можно распознать, не разбирая нагрузку, формат которой мы не знаем. Точки нет в алфавите
- * base64url, так что разделитель однозначен.
+ * The version stands before the dot and in plain text, not inside base64: a link of another version
+ * can be recognized without parsing the payload, whose format we do not know. The dot is not in the
+ * base64url alphabet, so the separator is unambiguous.
  */
 import {
   findNamesProblem,
@@ -25,9 +25,9 @@ import { decodeBase64Url, encodeBase64Url } from "./base64-url";
 
 export const BILL_CODE_VERSION = 1;
 /**
- * Предел длины кода: защита от гигантских ссылок. Счёт, который не помещается в предел
- * (сотни участников или тысячи трат), осознанно не поддерживается: ссылка на него
- * откроется как повреждённая.
+ * Limit of the code length: protection against gigantic links. A bill that does not fit the limit
+ * (hundreds of participants or thousands of expenses) is deliberately not supported: the link to it
+ * will open as corrupted.
  */
 export const MAX_BILL_CODE_LENGTH = 100_000;
 
@@ -48,7 +48,7 @@ export type DecodeBillResult =
 type EncodedExpense = readonly [number, number, readonly number[]];
 type EncodedBill = readonly [readonly string[], readonly EncodedExpense[]];
 
-/** Сырая трата из JSON: типы её частей ещё не проверены. */
+/** A raw expense from JSON: the types of its parts are not checked yet. */
 interface RawExpense {
   readonly payer: unknown;
   readonly amount: unknown;
@@ -60,7 +60,7 @@ interface RawBill {
   readonly expenses: readonly RawExpense[];
 }
 
-/** Результат одного шага разбора: значение для следующего шага или ошибка. */
+/** The result of one parsing step: a value for the next step or an error. */
 type Step<Value> =
   | { readonly kind: "passed"; readonly value: Value }
   | { readonly kind: "failed"; readonly error: BillCodeError };
@@ -96,7 +96,9 @@ export function decodeBill(code: string): DecodeBillResult {
   if (bill.kind === "failed") return bill;
 
   if (!isTotalSpentWithinLimit(bill.value)) {
-    return invalidBill("Сумма всех трат слишком велика для расчёта");
+    return invalidBill(
+      "The total of all expenses is too large for the calculation",
+    );
   }
 
   return { kind: "decoded", bill: bill.value };
@@ -119,28 +121,30 @@ function findParticipantIndex(
   id: ParticipantId,
 ): number {
   const index = indexById.get(id);
-  if (index === undefined) throw new Error(`Участник не найден: ${id}`);
+  if (index === undefined) throw new Error(`Participant not found: ${id}`);
 
   return index;
 }
 
-/** Проверяет длину и версию и возвращает нагрузку, не разбирая её. */
+/** Checks the length and the version and returns the payload without parsing it. */
 function splitVersion(code: string): Step<string> {
   if (code.length > MAX_BILL_CODE_LENGTH) {
-    return malformed(`Ссылка длиннее ${String(MAX_BILL_CODE_LENGTH)} знаков`);
+    return malformed(
+      `The link is longer than ${String(MAX_BILL_CODE_LENGTH)} characters`,
+    );
   }
 
   const separatorIndex = code.indexOf(VERSION_SEPARATOR);
-  if (separatorIndex === -1) return malformed("В ссылке нет версии формата");
+  if (separatorIndex === -1) return malformed("The link has no format version");
 
   const versionText = code.slice(0, separatorIndex);
   if (!VERSION_PATTERN.test(versionText)) {
-    return malformed("Версия формата — не число");
+    return malformed("The format version is not a number");
   }
 
   const version = Number(versionText);
   if (!Number.isSafeInteger(version)) {
-    return malformed("Версия формата слишком велика");
+    return malformed("The format version is too large");
   }
   if (version !== BILL_CODE_VERSION) {
     return failed({ kind: "unsupportedVersion", version });
@@ -152,28 +156,30 @@ function splitVersion(code: string): Step<string> {
 function parsePayload(encodedPayload: string): Step<unknown> {
   const text = decodeBase64Url(encodedPayload);
   if (text === undefined) {
-    return malformed("Нагрузка — не base64url с текстом в UTF-8");
+    return malformed("The payload is not base64url with UTF-8 text");
   }
 
   try {
     const json: unknown = JSON.parse(text);
     return passed(json);
   } catch {
-    return malformed("Нагрузка — не JSON");
+    return malformed("The payload is not JSON");
   }
 }
 
 function readRawBill(json: unknown): Step<RawBill> {
   if (!isTuple(json, BILL_TUPLE_LENGTH)) {
-    return invalidBill("Счёт должен состоять из списка имён и списка трат");
+    return invalidBill(
+      "The bill must consist of a list of names and a list of expenses",
+    );
   }
 
   const [names, expenses] = json;
   if (!isStringList(names)) {
-    return invalidBill("Имена участников должны быть списком строк");
+    return invalidBill("Participant names must be a list of strings");
   }
   if (!Array.isArray(expenses)) {
-    return invalidBill("Траты должны быть списком");
+    return invalidBill("Expenses must be a list");
   }
 
   const rawExpenses = mapSteps(expenses as readonly unknown[], readRawExpense);
@@ -185,7 +191,7 @@ function readRawBill(json: unknown): Step<RawBill> {
 function readRawExpense(value: unknown, index: number): Step<RawExpense> {
   if (!isTuple(value, EXPENSE_TUPLE_LENGTH)) {
     return invalidBill(
-      `Трата ${String(index + 1)} должна состоять из плательщика, суммы и получателей`,
+      `Expense ${String(index + 1)} must consist of a payer, an amount and recipients`,
     );
   }
 
@@ -222,12 +228,12 @@ function buildExpense(
 
   if (!isParticipantIndex(payer, participantCount)) {
     return invalidBill(
-      `Плательщик траты ${String(expenseNumber)} — не участник из списка`,
+      `The payer of expense ${String(expenseNumber)} is not a participant from the list`,
     );
   }
   if (!isPositiveKopecks(amount)) {
     return invalidBill(
-      `Сумма траты ${String(expenseNumber)} — не целое положительное число копеек`,
+      `The amount of expense ${String(expenseNumber)} is not a positive integer number of kopecks`,
     );
   }
 
@@ -252,7 +258,7 @@ function readBeneficiaryIndexes(
   expenseNumber: number,
 ): Step<readonly number[]> {
   if (!Array.isArray(value) || value.length === 0) {
-    return invalidBill(`У траты ${String(expenseNumber)} нет получателей`);
+    return invalidBill(`Expense ${String(expenseNumber)} has no recipients`);
   }
 
   const indexes = value as readonly unknown[];
@@ -261,19 +267,19 @@ function readBeneficiaryIndexes(
   );
   if (!isEveryIndexValid) {
     return invalidBill(
-      `Получатель траты ${String(expenseNumber)} — не участник из списка`,
+      `A recipient of expense ${String(expenseNumber)} is not a participant from the list`,
     );
   }
 
   const hasRepeats = new Set(indexes).size !== indexes.length;
   if (hasRepeats) {
-    return invalidBill(`Получатели траты ${String(expenseNumber)} повторяются`);
+    return invalidBill(`Recipients of expense ${String(expenseNumber)} repeat`);
   }
 
   return passed(indexes);
 }
 
-/** Применяет шаг к каждому элементу и останавливается на первой ошибке. */
+/** Applies a step to each element and stops at the first error. */
 function mapSteps<Input, Output>(
   inputs: readonly Input[],
   convert: (input: Input, index: number) => Step<Output>,
@@ -293,11 +299,11 @@ function mapSteps<Input, Output>(
 function describeNamesProblem(problem: NameProblem): string {
   switch (problem) {
     case "empty":
-      return "Имя участника пустое";
+      return "A participant name is empty";
     case "tooLong":
-      return `Имя участника длиннее ${String(MAX_NAME_LENGTH)} знаков`;
+      return `A participant name is longer than ${String(MAX_NAME_LENGTH)} characters`;
     case "duplicate":
-      return "Имена участников повторяются";
+      return "Participant names repeat";
   }
 }
 

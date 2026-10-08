@@ -31,8 +31,8 @@ export function createShareSection(actions: BillActions): Section {
   ]);
   linkField.hidden = true;
 
-  // Буфер отвечает позже, чем нажата кнопка: к этому времени счёт мог измениться,
-  // и ответ про старую ссылку надо отбросить.
+  // The clipboard answers later than the button is pressed: by then the bill may have changed,
+  // and the answer about the old link must be discarded.
   let renderGeneration = 0;
 
   shareButton.addEventListener("click", shareLink);

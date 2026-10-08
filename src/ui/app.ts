@@ -13,7 +13,7 @@ import { createParticipantsSection } from "./participants-section";
 import { createShareSection } from "./share-section";
 import { createSummarySection } from "./summary-section";
 
-/** Возвращает функцию, которая снимает с окна обработчики приложения. */
+/** Returns a function that removes the app's handlers from the window. */
 export function mountApp(root: HTMLElement): () => void {
   let bill: Bill = EMPTY_BILL;
 
@@ -54,7 +54,7 @@ export function mountApp(root: HTMLElement): () => void {
     renderSections();
   }
 
-  /** Адрес при этом не пишется: он меняется только вместе со счётом. */
+  /** The address is not written here: it changes only together with the bill. */
   function openBillFromAddress(): void {
     const code = readBillCode();
     if (code === undefined) {

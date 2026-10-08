@@ -1,6 +1,6 @@
 import type { Bill } from "../bill/bill";
 
-/** Действия секций над счётом: чтение текущего и замена новым значением. */
+/** Actions of the sections on the bill: reading the current one and replacing it with a new value. */
 export interface BillActions {
   readonly getBill: () => Bill;
   readonly changeBill: (bill: Bill) => void;

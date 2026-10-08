@@ -24,14 +24,14 @@ export interface Bill {
 export type NameProblem = "empty" | "tooLong" | "duplicate";
 
 /**
- * Длина имени в кодовых точках Unicode, а не в знаках, которые видит человек: размер ссылки
- * ограничен жёстко, и составные знаки не должны его обходить (например, «👩‍👩‍👧» — 5 кодовых точек).
+ * Name length in Unicode code points, not in characters a person sees: the link size
+ * is strictly limited, and composite characters must not bypass it (for example, "👩‍👩‍👧" — 5 code points).
  */
 export const MAX_NAME_LENGTH = 40;
 
 /**
- * Предел суммы всех трат. При большей сумме балансы участников теряют точность
- * и расчёт переводов становится неверным.
+ * Limit of the total of all expenses. Above it the participants' balances lose precision
+ * and the transfer calculation becomes wrong.
  */
 export const MAX_TOTAL_SPENT: Kopecks = Number.MAX_SAFE_INTEGER;
 
@@ -57,12 +57,12 @@ export function removeExpense(bill: Bill, id: ExpenseId): Bill {
   return { ...bill, expenses };
 }
 
-/** Сумма всех трат счёта. */
+/** Total of all expenses of the bill. */
 export function calculateTotalSpent(bill: Bill): Kopecks {
   return bill.expenses.reduce((total, expense) => total + expense.amount, 0);
 }
 
-/** Укладывается ли сумма всех трат счёта в предел, при котором расчёт точен. */
+/** Whether the total of all expenses fits the limit at which the calculation is exact. */
 export function isTotalSpentWithinLimit(bill: Bill): boolean {
   return calculateTotalSpent(bill) <= MAX_TOTAL_SPENT;
 }
@@ -83,7 +83,7 @@ export function findNameProblem(
   return undefined;
 }
 
-/** Проверяет список имён по тем же правилам, что и `findNameProblem`, за линейное время. */
+/** Checks a list of names by the same rules as `findNameProblem`, in linear time. */
 export function findNamesProblem(
   names: readonly string[],
 ): NameProblem | undefined {
@@ -101,7 +101,7 @@ export function findNamesProblem(
   return undefined;
 }
 
-/** Участник платил сам или за него платили. */
+/** The participant paid themselves or was paid for. */
 export function isParticipantInExpenses(
   bill: Bill,
   id: ParticipantId,
@@ -112,7 +112,7 @@ export function isParticipantInExpenses(
 }
 
 function isNameTooLong(name: string): boolean {
-  // Считаем кодовые точки, а не графемы: так длина имени в ссылке ограничена жёстко.
+  // Count code points, not graphemes: this way the name length in the link is strictly limited.
   const nameLength = Array.from(name.trim()).length;
   return nameLength > MAX_NAME_LENGTH;
 }
@@ -125,7 +125,8 @@ export function getParticipantName(bill: Bill, id: ParticipantId): string {
   const participant = bill.participants.find(
     (candidate) => candidate.id === id,
   );
-  if (participant === undefined) throw new Error(`Участник не найден: ${id}`);
+  if (participant === undefined)
+    throw new Error(`Participant not found: ${id}`);
 
   return participant.name;
 }

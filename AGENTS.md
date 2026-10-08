@@ -6,7 +6,7 @@ Rules of this project for agents and people. The development process is set by C
 
 split-bill is the web app "Делим счёт" ("Split the bill"): a group enters expenses, and the app calculates who owes whom and how much, and reduces the settlements to the minimal number of transfers. For anyone who travels in a group or goes to a cafe together.
 
-- Language: TypeScript. Tools: Vite (build and dev server), Vitest (tests), ESLint (linter), Prettier (formatting). Node 22+.
+- Programming language: TypeScript. Tools: Vite (build and dev server), Vitest (tests), ESLint (linter), Prettier (formatting). Node 22+.
 - Language rules: UI texts are in Russian for now (languages come in a follow-up task). Everything else is in English: code comments, messages (errors, logs, tool output), test names, commit messages, the README, this file, PR descriptions and new journal entries. Identifiers (variables, functions, types, file names) are in English too. Old commits and past journal entries stay as they are.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), entirely in English. Example: `feat(settlement): reduce debts to the minimal number of transfers`.
 

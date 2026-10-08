@@ -9,7 +9,7 @@ describe("parseRubles", () => {
     ["1 500", 150_000],
     ["1 500", 150_000],
     ["  12  ", 1_200],
-  ])("принимает %j", (text, expected) => {
+  ])("accepts %j", (text, expected) => {
     expect(parseRubles(text)).toBe(expected);
   });
 
@@ -24,11 +24,11 @@ describe("parseRubles", () => {
     ",5",
     "1.2.3",
     "9".repeat(30),
-  ])("отклоняет %j", (text) => {
+  ])("rejects %j", (text) => {
     expect(parseRubles(text)).toBeUndefined();
   });
 
-  it("переводит копейки без ошибок дробных чисел", () => {
+  it("converts kopecks without floating-point errors", () => {
     expect(parseRubles("0,1")).toBe(10);
     expect(parseRubles("0,07")).toBe(7);
     expect(parseRubles("1.15")).toBe(115);
@@ -36,7 +36,7 @@ describe("parseRubles", () => {
 });
 
 describe("formatRubles", () => {
-  it("форматирует рубли с копейками", () => {
+  it("formats rubles with kopecks", () => {
     const withoutSpecialSpaces = formatRubles(123_450).replace(/\s/gu, " ");
 
     expect(withoutSpecialSpaces).toBe("1 234,50 ₽");

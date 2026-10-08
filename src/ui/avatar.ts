@@ -1,6 +1,6 @@
 import { createElement } from "./dom";
 
-/** Столько оттенков задано в style.css токенами `--color-avatar-1…`: менять их надо вместе. */
+/** That many tones are set by the `--color-avatar-1…` tokens in style.css: change them together. */
 export const AVATAR_TONE_COUNT = 8;
 
 const FNV_OFFSET_BASIS = 0x81_1c_9d_c5;
@@ -9,7 +9,7 @@ const graphemeSegmenter = new Intl.Segmenter("ru-RU", {
   granularity: "grapheme",
 });
 
-/** Номер оттенка от 0 до `AVATAR_TONE_COUNT - 1`: у одного имени всегда один и тот же. */
+/** Tone number from 0 to `AVATAR_TONE_COUNT - 1`: the same name always gets the same one. */
 export function pickAvatarTone(name: string): number {
   const codePoints = Array.from(name, (char) => char.codePointAt(0) ?? 0);
   const hash = codePoints.reduce(
@@ -20,7 +20,7 @@ export function pickAvatarTone(name: string): number {
   return (hash >>> 0) % AVATAR_TONE_COUNT;
 }
 
-/** Первый видимый знак имени заглавным: целый, а не половинка составного эмодзи. */
+/** The first visible character of the name in upper case: a whole one, not half of a composite emoji. */
 export function readInitial(name: string): string {
   const firstGrapheme = graphemeSegmenter.segment(name.trim()).containing(0);
   if (firstGrapheme === undefined) return "";
@@ -28,7 +28,7 @@ export function readInitial(name: string): string {
   return firstGrapheme.segment.toLocaleUpperCase("ru-RU");
 }
 
-/** Кружок с первой буквой имени; диктор его пропускает, потому что имя читается рядом. */
+/** A circle with the first letter of the name; the screen reader skips it because the name is read next to it. */
 export function createAvatar(name: string): HTMLSpanElement {
   const toneClass = `avatar-tone-${String(pickAvatarTone(name) + 1)}`;
 

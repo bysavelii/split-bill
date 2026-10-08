@@ -1,7 +1,7 @@
 import { createElement } from "./dom";
 import { createIcon } from "./icons";
 
-/** Кнопка-крестик без текста: смысл ей даёт `ariaLabel`. */
+/** A cross button without text: `ariaLabel` gives it its meaning. */
 export function createRemoveButton(ariaLabel: string): HTMLButtonElement {
   return createElement(
     "button",

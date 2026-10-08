@@ -4,7 +4,7 @@ interface ElementOptions {
   readonly attributes?: Readonly<Record<string, string>>;
 }
 
-/** Текст попадает в элемент только через textContent, поэтому разметка из него не исполняется. */
+/** Text gets into an element only through textContent, so markup in it is not executed. */
 export function createElement<Tag extends keyof HTMLElementTagNameMap>(
   tag: Tag,
   options: ElementOptions = {},
@@ -21,7 +21,7 @@ export function createElement<Tag extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
-/** Подпись, связанная с полем через `for`: у поля должен быть задан `id`. */
+/** A label tied to a field through `for`: the field must have an `id`. */
 export function createField(
   labelText: string,
   control: HTMLElement,
@@ -34,7 +34,7 @@ export function createField(
   return createElement("div", { className: "field" }, [label, control]);
 }
 
-/** Область для сообщений: экранные дикторы читают их при появлении. */
+/** An area for messages: screen readers read them when they appear. */
 export function createMessageArea(): HTMLParagraphElement {
   return createElement("p", {
     className: "message",

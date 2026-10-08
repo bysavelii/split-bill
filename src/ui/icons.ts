@@ -4,7 +4,7 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const ICON_VIEW_BOX = "0 0 24 24";
 const ICON_STROKE_WIDTH = "2";
 
-/** Контуры значков в сетке 24×24; рисуются линией цвета текста. */
+/** Icon outlines on a 24×24 grid; drawn with a line in the text color. */
 const ICON_PATHS: Record<IconName, string> = {
   close: "M6 6l12 12M18 6L6 18",
   check: "M5 12.5l4.5 4.5L19 7.5",
@@ -14,7 +14,7 @@ const ICON_PATHS: Record<IconName, string> = {
   receipt: "M6 3h12v18l-3-2-3 2-3-2-3 2V3zM9 8h6M9 12h6",
 };
 
-/** Значок скрыт от диктора: смысл всегда передаёт текст или `aria-label` рядом. */
+/** The icon is hidden from the screen reader: the meaning is always conveyed by the text or `aria-label` next to it. */
 export function createIcon(name: IconName): SVGSVGElement {
   const icon = document.createElementNS(SVG_NAMESPACE, "svg");
   icon.setAttribute("viewBox", ICON_VIEW_BOX);

@@ -10,21 +10,21 @@ function normalize(text: string): string {
 }
 
 describe("describeBalanceOutcome", () => {
-  it("пишет «получает» со знаком плюс, когда участнику должны", () => {
+  it('writes "получает" with a plus sign when the participant is owed', () => {
     const outcome = describeBalanceOutcome(60_000);
 
     expect(outcome.kind).toBe("receives");
     expect(normalize(outcome.text)).toBe("получает +600,00 ₽");
   });
 
-  it("пишет «отдаёт» с настоящим минусом и суммой по модулю, когда должен он", () => {
+  it('writes "отдаёт" with a real minus and the absolute amount when they owe', () => {
     const outcome = describeBalanceOutcome(-30_000);
 
     expect(outcome.kind).toBe("gives");
     expect(normalize(outcome.text)).toBe("отдаёт \u2212300,00 ₽");
   });
 
-  it("пишет «в расчёте», когда баланс нулевой", () => {
+  it('writes "в расчёте" when the balance is zero', () => {
     expect(describeBalanceOutcome(0)).toEqual({
       kind: "settled",
       text: "в расчёте",
@@ -33,7 +33,7 @@ describe("describeBalanceOutcome", () => {
 });
 
 describe("describeTransferCount", () => {
-  it("объясняет обычное число переводов", () => {
+  it("explains the usual number of transfers", () => {
     const text = describeTransferCount({
       transferCount: 2,
       settlingCount: 3,
@@ -45,7 +45,7 @@ describe("describeTransferCount", () => {
     );
   });
 
-  it("объясняет, что переводов меньше обычного из-за групп", () => {
+  it("explains that there are fewer transfers than usual because of groups", () => {
     const text = describeTransferCount({
       transferCount: 2,
       settlingCount: 4,
@@ -57,7 +57,7 @@ describe("describeTransferCount", () => {
     );
   });
 
-  it("честно говорит, что минимум не гарантирован", () => {
+  it("honestly says the minimum is not guaranteed", () => {
     const text = describeTransferCount({
       transferCount: 19,
       settlingCount: 20,
@@ -75,7 +75,7 @@ describe("formatTransferCount", () => {
     [1, "1 перевод"],
     [2, "2 перевода"],
     [5, "5 переводов"],
-  ])("для %i пишет «%s»", (count, expected) => {
+  ])('for %i writes "%s"', (count, expected) => {
     expect(formatTransferCount(count)).toBe(expected);
   });
 });

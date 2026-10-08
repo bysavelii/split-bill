@@ -1,5 +1,5 @@
 :root {
-  /* Подсказывает браузеру тему для нативных элементов: список select, полосы прокрутки. */
+  /* Hints the browser at the theme for native elements: the select list, scrollbars. */
   color-scheme: light dark;
 
   --color-background: #f6f5f2;
@@ -7,7 +7,7 @@
   --color-text: #1c1917;
   --color-text-muted: #6b6460;
   --color-border: #e7e3dd;
-  /* Граница полей и второстепенной кнопки: у --color-border на белом лишь 1,28:1, а для элементов управления нужно не меньше 3:1. */
+  /* Border of fields and the secondary button: --color-border on white gives only 1.28:1, while controls need at least 3:1. */
   --color-control-border: #8a817a;
   --color-accent: #0e7c66;
   --color-accent-soft: #e3f3ee;
@@ -18,7 +18,7 @@
   --color-warning-background: #fff4e5;
   --color-warning-border: #f0b429;
 
-  /* Одна палитра аватаров на обе темы, текст на ней всегда тёмный. Число оттенков зашито в AVATAR_TONE_COUNT (src/ui/avatar.ts). */
+  /* One avatar palette for both themes, the text on it is always dark. The number of tones is fixed in AVATAR_TONE_COUNT (src/ui/avatar.ts). */
   --color-avatar-text: #1c1917;
   --color-avatar-1: #f8d3bf;
   --color-avatar-2: #f3e1a9;
@@ -48,18 +48,18 @@
   --font-size-caption: 0.875rem;
   --font-size-small: 0.8125rem;
 
-  /* 44 px — минимальный размер цели касания для пальца. */
+  /* 44 px is the minimum touch target size for a finger. */
   --touch-target: 2.75rem;
   --icon-size: 1.25rem;
   --avatar-size: 1.75rem;
   --column-width: 40rem;
   --column-width-wide: 72rem;
-  /* Предел ширины имени в таблице «Как посчитано»: длиннее — переносится. */
+  /* Limit of the name width in the "Как посчитано" table: a longer name wraps. */
   --breakdown-name-width: 7rem;
-  /* Зазор слева от числовой колонки таблицы: на телефоне уже, чтобы суммы не сливались и таблица помещалась. */
+  /* Gap to the left of the table's numeric column: narrower on a phone so the amounts do not merge and the table fits. */
   --breakdown-column-gap: var(--space-5);
   --breakdown-column-gap-compact: var(--space-3);
-  /* Точка-разделитель между пунктами обзора стоит левее пункта на отступ и на поправку к ширине самой точки. */
+  /* The separator dot sits to the left of its item by the spacing plus a correction for the dot's own width. */
   --overview-separator-offset: calc(-1 * var(--space-2) - 0.15em);
   --button-hover-brightness: 0.92;
   --duration-fast: 150ms;
@@ -99,7 +99,7 @@ body {
   line-height: 1.5;
   color: var(--color-text);
   background: var(--color-background);
-  /* Без этого длинное имя без пробелов растянет страницу шире экрана телефона. */
+  /* Without this a long name without spaces would stretch the page wider than a phone screen. */
   overflow-wrap: anywhere;
 }
 
@@ -125,8 +125,8 @@ main {
   color: var(--color-text-muted);
 }
 
-/* Точка-разделитель стоит левее пункта, в промежутке; при переносе строки она
-   оказывается за краем сводки и обрезается, а не висит в начале строки. */
+/* The separator dot sits to the left of its item, in the gap; when the line wraps
+   it ends up past the edge of the overview and is clipped instead of hanging at the start of a line. */
 .overview {
   display: flex;
   flex-wrap: wrap;
@@ -212,7 +212,7 @@ legend {
 }
 
 fieldset {
-  /* По умолчанию у fieldset min-width: min-content, и длинные имена его распирают. */
+  /* By default a fieldset has min-width: min-content, and long names stretch it. */
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -232,7 +232,7 @@ legend {
   align-items: end;
 }
 
-/* Подпись занимает верхний ряд, а поле и кнопка встают рядом в нижнем. */
+/* The label takes the top row, and the field and the button sit side by side in the bottom one. */
 .inline-form .field {
   display: contents;
 }
@@ -261,7 +261,7 @@ legend {
   border-radius: var(--radius-pill);
 }
 
-/* Пустой список не должен добавлять лишний промежуток между блоками секции. */
+/* An empty list must not add an extra gap between the blocks of the section. */
 .chips:empty,
 .expenses:empty {
   display: none;
@@ -302,7 +302,7 @@ legend {
   min-width: 0;
 }
 
-/* Галочка занимает место и у невыбранной плашки, чтобы выбор не сдвигал соседей. */
+/* The check mark takes space in an unselected pill too, so a choice does not shift its neighbors. */
 .chip-check {
   flex-shrink: 0;
   width: var(--icon-size);
@@ -451,7 +451,7 @@ input[readonly] {
   color: var(--color-error);
 }
 
-/* Пустая область для диктора остаётся в разметке, но не добавляет промежуток. */
+/* The empty area for the screen reader stays in the markup but adds no gap. */
 .message:empty {
   margin-bottom: calc(-1 * var(--space-3));
 }
@@ -540,7 +540,7 @@ input[readonly] {
 .breakdown td {
   padding: var(--space-2) 0;
   text-align: right;
-  /* Без этого перенос шёл бы посреди слова и после пробела перед «₽». */
+  /* Without this the wrap would happen in the middle of a word and after the space before "₽". */
   overflow-wrap: normal;
   border-bottom: 1px solid var(--color-border);
 }
@@ -550,13 +550,13 @@ input[readonly] {
   text-align: left;
 }
 
-/* Числа выровнены по правому краю, поэтому зазор между колонками задаёт левый отступ ячейки. */
+/* Numbers are right-aligned, so the gap between columns is set by the cell's left padding. */
 .breakdown th:not(:first-child),
 .breakdown td {
   padding-left: var(--breakdown-column-gap);
 }
 
-/* Длинное имя переносится, а не раздвигает таблицу; короткое не ломается посреди слова. */
+/* A long name wraps instead of pushing the table apart; a short one does not break in the middle of a word. */
 .breakdown tbody th {
   max-width: var(--breakdown-name-width);
   overflow-wrap: anywhere;
@@ -666,14 +666,14 @@ input[readonly] {
   background: var(--color-avatar-8);
 }
 
-/* Суммы выровнены по правому краю и одной ширины цифр, чтобы столбец читался. */
+/* Amounts are right-aligned and use equal-width digits so the column reads well. */
 .amount {
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
 }
 
-/* Без правила про движение пользователь с «уменьшить анимацию» не получает переходов. */
+/* Without the motion rule a user with "reduce motion" gets no transitions. */
 @media (prefers-reduced-motion: no-preference) {
   .button,
   .icon-button,
@@ -690,7 +690,7 @@ input[readonly] {
   }
 }
 
-/* На телефоне поля уже, чтобы таблица «Как посчитано» помещалась без прокрутки при 360 px. */
+/* On a phone the margins are narrower so the "Как посчитано" table fits without scrolling at 360 px. */
 @media (max-width: 480px) {
   main {
     padding-inline: var(--space-2);
@@ -710,7 +710,7 @@ input[readonly] {
   }
 }
 
-/* 900 px — ширина, с которой две колонки удобнее одной (в @media нельзя взять значение из переменной). */
+/* 900 px is the width from which two columns beat one (a value cannot be taken from a variable in @media). */
 @media (min-width: 900px) {
   main {
     max-width: var(--column-width-wide);
@@ -723,8 +723,8 @@ input[readonly] {
     align-items: start;
   }
 
-  /* Итог остаётся на виду при прокрутке; если он выше экрана, прокручивается сам.
-     Внутренний отступ нужен, чтобы рамка фокуса и тень у края не обрезались. */
+  /* The summary stays in view while scrolling; if it is taller than the screen, it scrolls on its own.
+     The inner padding is needed so the focus ring and the shadow at the edge are not clipped. */
   .layout-side {
     position: sticky;
     top: var(--space-6);
@@ -735,7 +735,7 @@ input[readonly] {
   }
 }
 
-/* Текст для экранного диктора: на экране не виден, но остаётся в дереве доступности. */
+/* Text for the screen reader: not visible on screen but stays in the accessibility tree. */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -749,7 +749,7 @@ input[readonly] {
   border: 0;
 }
 
-/* Без этого правила display из классов выше перебивает атрибут hidden. */
+/* Without this rule display from the classes above overrides the hidden attribute. */
 [hidden] {
   display: none;
 }

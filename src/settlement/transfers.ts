@@ -10,19 +10,19 @@ export interface Transfer {
 
 export interface TransferPlan {
   readonly transfers: readonly Transfer[];
-  /** Число переводов гарантированно наименьшее (точный перебор). */
+  /** The number of transfers is guaranteed to be the smallest (exact search). */
   readonly isMinimal: boolean;
-  /** Сколько человек отдают или получают деньги: у остальных баланс нулевой. */
+  /** How many people give or receive money: the rest have a zero balance. */
   readonly settlingCount: number;
 }
 
 /**
- * Предел точного поиска минимума. Перебор подмножеств удваивается на каждого
- * человека: при 16 участниках это около миллиона шагов, расчёт ещё мгновенный.
+ * Limit of the exact search for the minimum. Enumerating subsets doubles with each
+ * person: with 16 participants it is about a million steps, the calculation is still instant.
  */
 export const EXACT_SEARCH_LIMIT = 16;
 
-/** Старший бит 32-разрядного числа, с которым работает `Math.clz32`. */
+/** The highest bit of the 32-bit number that `Math.clz32` works with. */
 const MAX_BIT_INDEX = 31;
 
 interface OpenPosition {
@@ -31,8 +31,8 @@ interface OpenPosition {
 }
 
 /**
- * Переводов нужно «участники с ненулевым балансом» минус «наибольшее число
- * групп с нулевой суммой»: внутри каждой группы деньги сходятся без остатка.
+ * The transfers needed are "participants with a non-zero balance" minus "the largest number
+ * of groups with a zero sum": inside each group the money adds up with no remainder.
  */
 export function calculateTransfers(balances: readonly Balance[]): TransferPlan {
   assertZeroSum(balances);
@@ -54,9 +54,7 @@ function assertZeroSum(balances: readonly Balance[]): void {
   const sum = balances.reduce((total, balance) => total + balance.amount, 0);
   if (sum === 0) return;
 
-  throw new RangeError(
-    `Сумма балансов должна быть нулевой, получено: ${String(sum)}`,
-  );
+  throw new RangeError(`The sum of balances must be zero, got: ${String(sum)}`);
 }
 
 function settleByGroups(settling: readonly Balance[]): Transfer[] {
@@ -66,8 +64,8 @@ function settleByGroups(settling: readonly Balance[]): Transfer[] {
 }
 
 /**
- * Делит балансы на наибольшее число групп с нулевой суммой. Сумма балансов
- * должна быть нулевой, число балансов — не больше `EXACT_SEARCH_LIMIT`.
+ * Splits balances into the largest number of groups with a zero sum. The sum of balances
+ * must be zero, the number of balances is at most `EXACT_SEARCH_LIMIT`.
  */
 function findZeroSumGroups(settling: readonly Balance[]): Balance[][] {
   const amounts = settling.map((balance) => balance.amount);
@@ -80,7 +78,7 @@ function findZeroSumGroups(settling: readonly Balance[]): Balance[][] {
   );
 }
 
-/** Сумма балансов для каждого подмножества: бит `i` маски — участник `i`. */
+/** The sum of balances for each subset: bit `i` of the mask is participant `i`. */
 function calculateSubsetSums(amounts: readonly number[]): Float64Array {
   const subsetSums = new Float64Array(1 << amounts.length);
 
@@ -95,9 +93,9 @@ function calculateSubsetSums(amounts: readonly number[]): Float64Array {
 }
 
 /**
- * Для каждого подмножества — наибольшее число подмножеств с нулевой суммой в
- * цепочке, где участники добавляются по одному. Для всех участников сразу это
- * и есть наибольшее число групп.
+ * For each subset: the largest number of zero-sum subsets in the chain where
+ * participants are added one by one. For all participants at once this is
+ * the largest number of groups.
  */
 function countMaxGroups(subsetSums: Float64Array, size: number): Int32Array {
   const groupCounts = new Int32Array(subsetSums.length);
@@ -113,8 +111,8 @@ function countMaxGroups(subsetSums: Float64Array, size: number): Int32Array {
 }
 
 /**
- * Кого убрать из подмножества, чтобы остаток дал больше всего групп. При равных
- * вариантах берётся участник с меньшим индексом.
+ * Whom to remove from the subset so that the remainder gives the most groups. On ties
+ * the participant with the smaller index is taken.
  */
 function findBestRemoval(
   groupCounts: Int32Array,
@@ -137,7 +135,7 @@ function findBestRemoval(
   return bestIndex;
 }
 
-/** Идёт по цепочке убираний от всех участников и режет её на нулевых суммах. */
+/** Walks the chain of removals from all participants and cuts it at zero sums. */
 function restoreGroupMasks(
   subsetSums: Float64Array,
   groupCounts: Int32Array,
@@ -152,12 +150,12 @@ function restoreGroupMasks(
     mask ^= 1 << findBestRemoval(groupCounts, mask, size);
   }
 
-  // Группа — то, что добавляется между соседними разрезами; последний разрез — пустое множество.
+  // A group is what is added between adjacent cuts; the last cut is the empty set.
   const nextCuts = [...cuts.slice(1), 0];
   return cuts.map((cut, index) => cut ^ readAt(nextCuts, index));
 }
 
-/** Номер единственного установленного бита: у числа 2^k это k. */
+/** The index of the only set bit: for the number 2^k it is k. */
 function bitIndex(singleBit: number): number {
   return MAX_BIT_INDEX - Math.clz32(singleBit);
 }
@@ -166,12 +164,12 @@ function isInMask(mask: number, index: number): boolean {
   return (mask & (1 << index)) !== 0;
 }
 
-/** Индекс всегда в пределах массива; значение по умолчанию нужно только типам. */
+/** The index is always within the array; the default value is needed only for the types. */
 function readAt(values: ArrayLike<number>, index: number): number {
   return values[index] ?? 0;
 }
 
-/** Должники по очереди закрывают долги перед кредиторами, в порядке балансов. */
+/** Debtors in turn settle their debts to creditors, in the order of balances. */
 function settleGreedily(balances: readonly Balance[]): Transfer[] {
   const debtors = toOpenPositions(
     balances.filter((balance) => balance.amount < 0),
@@ -210,7 +208,7 @@ function toOpenPositions(balances: readonly Balance[]): OpenPosition[] {
   }));
 }
 
-/** Порядок переводов не зависит от группировки: по должнику, затем по получателю. */
+/** The order of transfers does not depend on grouping: by debtor, then by recipient. */
 function sortTransfers(
   transfers: readonly Transfer[],
   balances: readonly Balance[],

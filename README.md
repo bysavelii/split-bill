@@ -41,12 +41,12 @@ Domain logic (`src/bill`, `src/settlement`, `src/sharing`) knows nothing about t
 
 ## Deploying to GitHub Pages
 
-The site is deployed from the `main` branch by the workflow "Выкладка на GitHub Pages" (Deploy to GitHub Pages). The workflow "Проверки" (Checks) runs `make check` on every pull request into `main`.
+The site is deployed from the `main` branch by the workflow "Deploy to GitHub Pages". The workflow "Checks" runs `make check` on every pull request into `main`.
 
 1. In the repository open Settings → Pages → Build and deployment and choose Source: "GitHub Actions".
-2. Push to `main` or open Actions → "Выкладка на GitHub Pages" → Run workflow (branch `main`: the `github-pages` environment by default allows deployment only from the default branch).
+2. Push to `main` or open Actions → "Deploy to GitHub Pages" → Run workflow (branch `main`: the `github-pages` environment by default allows deployment only from the default branch).
 
-The site address is `https://<owner>.github.io/split-bill/`. It appears in Settings → Pages and in the run summary of the "Выкладка" (Deployment) job.
+The site address is `https://<owner>.github.io/split-bill/`. It appears in Settings → Pages and in the run summary of the "Deploy" job.
 
 ## Limitations
 

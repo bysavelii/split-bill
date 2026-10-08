@@ -21,7 +21,7 @@ function createOverviewItem(): HTMLSpanElement {
   return createElement("span", { className: "overview-item" });
 }
 
-/** Шапка: название, подзаголовок и сводка счёта в одну строку. */
+/** The header: the title, the subtitle and the bill overview in one line. */
 export function createPageHeader(): Section {
   const participantsItem = createOverviewItem();
   const expensesItem = createOverviewItem();

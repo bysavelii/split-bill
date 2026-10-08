@@ -32,14 +32,14 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
-    // Предметная логика и кодирование ссылки не знают о DOM и интерфейсе.
+    // Domain logic and link encoding know nothing about the DOM and the interface.
     files: ["src/bill/**", "src/settlement/**", "src/sharing/**"],
     rules: {
       "no-restricted-globals": [
         "error",
         ...DOM_GLOBALS.map((name) => ({
           name,
-          message: `Код без DOM не должен обращаться к ${name}`,
+          message: `Code without the DOM must not use ${name}`,
         })),
       ],
       "no-restricted-imports": [
@@ -48,7 +48,7 @@ export default tseslint.config(
           patterns: [
             {
               group: ["**/ui/**"],
-              message: "Код без DOM не должен импортировать интерфейс",
+              message: "Code without the DOM must not import the interface",
             },
           ],
         },

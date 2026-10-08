@@ -7,15 +7,15 @@ function sum(values: readonly number[]): number {
 }
 
 describe("splitAmount", () => {
-  it("делит поровну без остатка", () => {
+  it("splits evenly with no remainder", () => {
     expect(splitAmount(900, 3)).toEqual([300, 300, 300]);
   });
 
-  it("раздаёт остаток по копейке первым по порядку", () => {
+  it("hands out the remainder one kopeck at a time to the first in order", () => {
     expect(splitAmount(100, 3)).toEqual([34, 33, 33]);
   });
 
-  it("отдаёт единственную копейку первому", () => {
+  it("gives the only kopeck to the first one", () => {
     expect(splitAmount(1, 2)).toEqual([1, 0]);
   });
 
@@ -24,15 +24,18 @@ describe("splitAmount", () => {
     [1, 7],
     [12_345, 4],
     [99_999, 10],
-  ])("сумма долей %i на %i равна сумме траты", (amount, count) => {
-    expect(sum(splitAmount(amount, count))).toBe(amount);
-  });
+  ])(
+    "the sum of shares of %i split %i ways equals the expense amount",
+    (amount, count) => {
+      expect(sum(splitAmount(amount, count))).toBe(amount);
+    },
+  );
 
-  it("не принимает число долей меньше единицы", () => {
+  it("rejects a number of shares below one", () => {
     expect(() => splitAmount(100, 0)).toThrow(RangeError);
   });
 
-  it.each([0, -5, 1.5, Number.NaN])("не принимает сумму %d", (amount) => {
+  it.each([0, -5, 1.5, Number.NaN])("rejects the amount %d", (amount) => {
     expect(() => splitAmount(amount, 2)).toThrow(RangeError);
   });
 });
@@ -56,15 +59,15 @@ describe("hasUnevenSplit", () => {
     };
   }
 
-  it("без трат ложь", () => {
+  it("false without expenses", () => {
     expect(hasUnevenSplit({ participants: [], expenses: [] })).toBe(false);
   });
 
-  it("ложь, когда трата делится поровну", () => {
+  it("false when an expense divides evenly", () => {
     expect(hasUnevenSplit(createBill(90_000))).toBe(false);
   });
 
-  it("истина, когда трата не делится поровну до копейки", () => {
+  it("true when an expense does not divide evenly to the kopeck", () => {
     expect(hasUnevenSplit(createBill(10_000))).toBe(true);
   });
 });

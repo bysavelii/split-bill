@@ -1,7 +1,7 @@
 import { createElement } from "./dom";
 import { createIcon, type IconName } from "./icons";
 
-/** Дружелюбная подсказка с иконкой вместо пустого места. */
+/** A friendly hint with an icon instead of an empty space. */
 export function createEmptyState(
   iconName: IconName,
   text: string,
