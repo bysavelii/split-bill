@@ -8,8 +8,16 @@ import {
   type Participant,
 } from "../bill/bill";
 import { formatRubles, parseRubles } from "../bill/money";
+import { createAvatar } from "./avatar";
 import { createElement, createField, createMessageArea } from "./dom";
+import { createEmptyState } from "./empty-state";
+import { createIcon } from "./icons";
+import { createRemoveButton } from "./remove-button";
 import type { BillActions, Section } from "./section";
+
+const NO_PARTICIPANTS_TEXT = "Сначала добавьте участников";
+const NO_EXPENSES_TEXT =
+  "Трат пока нет. Добавьте первую: кто платил, сколько и за кого";
 
 const PAYER_SELECT_ID = "expense-payer";
 const AMOUNT_INPUT_ID = "expense-amount";
@@ -23,8 +31,7 @@ interface ExpenseForm {
   readonly form: HTMLFormElement;
   readonly payerSelect: HTMLSelectElement;
   readonly amountInput: HTMLInputElement;
-  readonly beneficiaryGroup: HTMLFieldSetElement;
-  readonly beneficiaryLegend: HTMLLegendElement;
+  readonly beneficiaryChips: HTMLDivElement;
   readonly message: HTMLParagraphElement;
 }
 
@@ -43,10 +50,14 @@ function createExpenseForm(): ExpenseForm {
       autocomplete: "off",
     },
   });
-  const beneficiaryLegend = createElement("legend", { text: "За кого" });
-  const beneficiaryGroup = createElement("fieldset", {}, [beneficiaryLegend]);
+  const beneficiaryChips = createElement("div", { className: "chips" });
+  const beneficiaryGroup = createElement("fieldset", {}, [
+    createElement("legend", { text: "За кого" }),
+    beneficiaryChips,
+  ]);
   const addButton = createElement("button", {
     text: "Добавить трату",
+    className: "button button-primary",
     attributes: { type: "submit" },
   });
   const message = createMessageArea();
@@ -62,8 +73,7 @@ function createExpenseForm(): ExpenseForm {
     form,
     payerSelect,
     amountInput,
-    beneficiaryGroup,
-    beneficiaryLegend,
+    beneficiaryChips,
     message,
   };
 }
@@ -71,7 +81,7 @@ function createExpenseForm(): ExpenseForm {
 function getBeneficiaryCheckboxes(
   expenseForm: ExpenseForm,
 ): HTMLInputElement[] {
-  return Array.from(expenseForm.beneficiaryGroup.querySelectorAll("input"));
+  return Array.from(expenseForm.beneficiaryChips.querySelectorAll("input"));
 }
 
 function checkAllBeneficiaries(expenseForm: ExpenseForm): void {
@@ -126,13 +136,18 @@ function renderPayerOptions(
 
 function createBeneficiaryCheckbox(participant: Participant): HTMLLabelElement {
   const checkbox = createElement("input", {
+    className: "visually-hidden",
     attributes: { type: "checkbox", value: participant.id },
   });
   checkbox.checked = true;
+  const checkIcon = createIcon("check");
+  checkIcon.classList.add("chip-check");
 
-  return createElement("label", { className: "checkbox" }, [
+  return createElement("label", { className: "checkbox chip-toggle" }, [
     checkbox,
-    createElement("span", { text: participant.name }),
+    createAvatar(participant.name),
+    createElement("span", { className: "chip-name", text: participant.name }),
+    checkIcon,
   ]);
 }
 
@@ -141,10 +156,7 @@ function renderBeneficiaryCheckboxes(
   participants: readonly Participant[],
 ): void {
   const checkboxes = participants.map(createBeneficiaryCheckbox);
-  expenseForm.beneficiaryGroup.replaceChildren(
-    expenseForm.beneficiaryLegend,
-    ...checkboxes,
-  );
+  expenseForm.beneficiaryChips.replaceChildren(...checkboxes);
 }
 
 function describeBeneficiaries(bill: Bill, expense: Expense): string {
@@ -173,19 +185,26 @@ function createExpenseRow(
   actions: BillActions,
 ): HTMLLIElement {
   const description = describeExpense(bill, expense);
-  const removeButton = createElement("button", {
-    text: "Удалить",
-    attributes: {
-      type: "button",
-      "aria-label": `Удалить трату: ${description}`,
-    },
-  });
+  const removeButton = createRemoveButton(`Удалить трату: ${description}`);
   removeButton.addEventListener("click", () => {
     actions.changeBill(removeExpense(actions.getBill(), expense.id));
   });
+  const payerName = getParticipantName(bill, expense.payerId);
+  const text = createElement("span", { className: "expense-text" }, [
+    createElement("span", { className: "expense-payer", text: payerName }),
+    createElement("span", {
+      className: "expense-beneficiaries",
+      text: describeBeneficiaries(bill, expense),
+    }),
+  ]);
 
-  return createElement("li", {}, [
-    createElement("span", { text: description }),
+  return createElement("li", { className: "expense" }, [
+    createAvatar(payerName),
+    text,
+    createElement("span", {
+      className: "amount expense-amount",
+      text: formatRubles(expense.amount),
+    }),
     removeButton,
   ]);
 }
@@ -219,16 +238,22 @@ function showFormWhenParticipantsPresent(
   expenseForm.form.hidden = !hasParticipants;
 }
 
+function showHintWhenNoExpenses(bill: Bill, noExpensesHint: HTMLElement): void {
+  const hasParticipants = bill.participants.length > 0;
+  const hasExpenses = bill.expenses.length > 0;
+  noExpensesHint.hidden = !hasParticipants || hasExpenses;
+}
+
 export function createExpensesSection(actions: BillActions): Section {
   const expenseForm = createExpenseForm();
-  const noParticipantsNotice = createElement("p", {
-    text: "Сначала добавьте участников",
-  });
-  const list = createElement("ul", { className: "list" });
+  const noParticipantsNotice = createEmptyState("people", NO_PARTICIPANTS_TEXT);
+  const noExpensesHint = createEmptyState("receipt", NO_EXPENSES_TEXT);
+  const list = createElement("ul", { className: "expenses" });
   const element = createElement("section", {}, [
     createElement("h2", { text: "Траты" }),
     noParticipantsNotice,
     expenseForm.form,
+    noExpensesHint,
     list,
   ]);
 
@@ -260,6 +285,7 @@ export function createExpensesSection(actions: BillActions): Section {
   function render(bill: Bill): void {
     clearMessage(expenseForm);
     showFormWhenParticipantsPresent(bill, expenseForm, noParticipantsNotice);
+    showHintWhenNoExpenses(bill, noExpensesHint);
 
     const haveParticipantsChanged = bill.participants !== renderedParticipants;
     if (haveParticipantsChanged) {

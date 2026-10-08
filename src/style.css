@@ -1,23 +1,89 @@
 :root {
-  --color-text: #1f2933;
-  --color-text-muted: #52606d;
-  --color-background: #f5f7fa;
+  /* Подсказывает браузеру тему для нативных элементов: список select, полосы прокрутки. */
+  color-scheme: light dark;
+
+  --color-background: #f6f5f2;
   --color-surface: #fff;
-  --color-border: #d9e2ec;
-  --color-divider: #e4e7eb;
+  --color-text: #1c1917;
+  --color-text-muted: #6b6460;
+  --color-border: #e7e3dd;
+  /* Граница полей и второстепенной кнопки: у --color-border на белом лишь 1,28:1, а для элементов управления нужно не меньше 3:1. */
+  --color-control-border: #8a817a;
+  --color-accent: #0e7c66;
+  --color-accent-soft: #e3f3ee;
+  --color-on-accent: #fff;
+  --color-gives: #c2410c;
+  --color-receives: #0e7c66;
   --color-error: #b42318;
-  --color-success: #067647;
   --color-warning-background: #fff4e5;
   --color-warning-border: #f0b429;
 
-  --radius-large: 0.5rem;
-  --radius-small: 0.25rem;
-  --section-gap: 1.5rem;
-  --column-width: 40rem;
+  /* Одна палитра аватаров на обе темы, текст на ней всегда тёмный. Число оттенков зашито в AVATAR_TONE_COUNT (src/ui/avatar.ts). */
+  --color-avatar-text: #1c1917;
+  --color-avatar-1: #f8d3bf;
+  --color-avatar-2: #f3e1a9;
+  --color-avatar-3: #cbebd9;
+  --color-avatar-4: #c6e3f2;
+  --color-avatar-5: #d2d9f7;
+  --color-avatar-6: #e3d3f2;
+  --color-avatar-7: #f5cfdb;
+  --color-avatar-8: #dce5c7;
+
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 6%);
+
+  --radius-card: 12px;
+  --radius-control: 10px;
+  --radius-pill: 999px;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --font-size-page-title: 1.75rem;
+  --font-size-section-title: 1.25rem;
+  --font-size-body: 1rem;
+  --font-size-caption: 0.875rem;
+  --font-size-small: 0.8125rem;
 
   /* 44 px — минимальный размер цели касания для пальца. */
   --touch-target: 2.75rem;
-  --checkbox-size: 1.25rem;
+  --icon-size: 1.25rem;
+  --avatar-size: 1.75rem;
+  --column-width: 40rem;
+  --column-width-wide: 72rem;
+  /* Предел ширины имени в таблице «Как посчитано»: длиннее — переносится. */
+  --breakdown-name-width: 7rem;
+  /* Зазор слева от числовой колонки таблицы: на телефоне уже, чтобы суммы не сливались и таблица помещалась. */
+  --breakdown-column-gap: var(--space-5);
+  --breakdown-column-gap-compact: var(--space-3);
+  /* Точка-разделитель между пунктами обзора стоит левее пункта на отступ и на поправку к ширине самой точки. */
+  --overview-separator-offset: calc(-1 * var(--space-2) - 0.15em);
+  --button-hover-brightness: 0.92;
+  --duration-fast: 150ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #171513;
+    --color-surface: #221f1c;
+    --color-text: #f2efea;
+    --color-text-muted: #b1a9a1;
+    --color-border: #3a3531;
+    --color-control-border: #857c74;
+    --color-accent: #4cc9a9;
+    --color-accent-soft: #17362f;
+    --color-on-accent: #0b1f1a;
+    --color-gives: #fb9a5b;
+    --color-receives: #4cc9a9;
+    --color-error: #f97066;
+    --color-warning-background: #3a2a12;
+    --color-warning-border: #b7791f;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 40%);
+  }
 }
 
 *,
@@ -29,6 +95,8 @@
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
+  font-size: var(--font-size-body);
+  line-height: 1.5;
   color: var(--color-text);
   background: var(--color-background);
   /* Без этого длинное имя без пробелов растянет страницу шире экрана телефона. */
@@ -36,124 +104,512 @@ body {
 }
 
 main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   max-width: var(--column-width);
   margin: 0 auto;
-  padding: var(--section-gap) 1rem;
+  padding: var(--space-5) var(--space-4);
+}
+
+.page-header {
+  margin-bottom: var(--space-2);
+}
+
+.page-header h1 {
+  margin-bottom: var(--space-1);
+}
+
+.page-subtitle {
+  margin-bottom: var(--space-3);
+  color: var(--color-text-muted);
+}
+
+/* Точка-разделитель стоит левее пункта, в промежутке; при переносе строки она
+   оказывается за краем сводки и обрезается, а не висит в начале строки. */
+.overview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+}
+
+.overview-item {
+  position: relative;
+  white-space: nowrap;
+}
+
+.overview-item + .overview-item::before {
+  position: absolute;
+  left: var(--overview-separator-offset);
+  font-weight: 400;
+  color: var(--color-text-muted);
+  content: "·";
+}
+
+.layout,
+.layout-main,
+.layout-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 section {
-  margin-bottom: var(--section-gap);
-  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-large);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 h1,
 h2 {
   margin-top: 0;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: var(--font-size-page-title);
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: var(--font-size-section-title);
+}
+
+p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
+}
+
+.field label,
+legend {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
 }
 
 fieldset {
   /* По умолчанию у fieldset min-width: min-content, и длинные имена его распирают. */
   min-width: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-small);
-}
-
-.checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: var(--touch-target);
-}
-
-.checkbox input {
-  flex-shrink: 0;
-  width: var(--checkbox-size);
-  height: var(--checkbox-size);
   margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+
+.inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+  align-items: end;
+}
+
+/* Подпись занимает верхний ряд, а поле и кнопка встают рядом в нижнем. */
+.inline-form .field {
+  display: contents;
+}
+
+.inline-form label {
+  grid-column: 1 / -1;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  max-width: 100%;
+  padding-left: var(--space-2);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+/* Пустой список не должен добавлять лишний промежуток между блоками секции. */
+.chips:empty,
+.expenses:empty {
+  display: none;
+}
+
+.participant-name {
+  min-width: 0;
+  font-weight: 500;
+}
+
+.chip-toggle {
+  position: relative;
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  max-width: 100%;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3) 0 var(--space-2);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: var(--color-surface);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-pill);
+}
+
+.chip-toggle:has(input:checked) {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.chip-toggle:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.chip-name {
+  min-width: 0;
+}
+
+/* Галочка занимает место и у невыбранной плашки, чтобы выбор не сдвигал соседей. */
+.chip-check {
+  flex-shrink: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--color-accent);
+  opacity: 0;
+}
+
+.chip-toggle:has(input:checked) .chip-check {
+  opacity: 1;
+}
+
+.expenses {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.expense {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.expense:last-child {
+  border-bottom: 0;
+}
+
+.expense-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.expense-payer {
+  font-weight: 600;
+}
+
+.expense-beneficiaries {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+.expense-amount {
+  font-weight: 600;
+}
+
+.empty-state {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border: 1px dashed var(--color-control-border);
+  border-radius: var(--radius-control);
+}
+
+.empty-state svg {
+  flex-shrink: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--color-accent);
 }
 
 input[type="text"],
 select {
   width: 100%;
   min-height: var(--touch-target);
-  padding: 0.4rem;
+  padding: 0 var(--space-3);
   font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
 }
 
-button {
-  min-height: var(--touch-target);
-  padding: 0.4rem 0.8rem;
-  font: inherit;
-  cursor: pointer;
+input[readonly] {
+  background: var(--color-background);
 }
 
-.list {
-  padding: 0;
-  list-style: none;
-}
-
-.list li {
-  display: flex;
+.button {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--color-divider);
+  justify-content: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-4);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
 }
 
-.list li > span {
-  min-width: 0;
+.button-primary {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
 }
 
-.list li button {
+.button-primary:hover {
+  filter: brightness(var(--button-hover-brightness));
+}
+
+.button-secondary {
+  color: var(--color-text);
+  background: transparent;
+  border-color: var(--color-control-border);
+}
+
+.button-secondary:hover {
+  background: var(--color-accent-soft);
+}
+
+.icon-button {
+  display: inline-flex;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  padding: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-pill);
+}
+
+.icon-button:hover {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+}
+
+.icon-button svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
 }
 
 .message {
-  min-height: 1.2em;
   margin: 0;
+  font-size: var(--font-size-caption);
   color: var(--color-error);
 }
 
-.message.message-success {
-  color: var(--color-success);
+/* Пустая область для диктора остаётся в разметке, но не добавляет промежуток. */
+.message:empty {
+  margin-bottom: calc(-1 * var(--space-3));
 }
 
-h3 {
-  margin: 1.25rem 0 0.5rem;
+.message.message-success {
+  color: var(--color-accent);
+}
+
+.summary-status + .breakdown {
+  margin-top: var(--space-4);
+}
+
+.transfers-count {
+  margin-bottom: var(--space-3);
+  font-weight: 600;
+}
+
+.transfers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  list-style: none;
+}
+
+.transfer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "people amount"
+    "route route";
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.transfer-people {
+  display: inline-flex;
+  grid-area: people;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.transfer-people svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--color-text-muted);
+}
+
+.transfer-route {
+  grid-area: route;
+  font-weight: 600;
+}
+
+.transfer-amount {
+  grid-area: amount;
+  font-size: var(--font-size-section-title);
+  font-weight: 700;
+}
+
+.breakdown {
+  border-top: 1px solid var(--color-border);
+}
+
+.breakdown > summary {
+  padding: var(--space-3) 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.breakdown table {
+  width: 100%;
+  font-size: var(--font-size-caption);
+  border-collapse: collapse;
+}
+
+.breakdown th,
+.breakdown td {
+  padding: var(--space-2) 0;
+  text-align: right;
+  /* Без этого перенос шёл бы посреди слова и после пробела перед «₽». */
+  overflow-wrap: normal;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.breakdown th:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+/* Числа выровнены по правому краю, поэтому зазор между колонками задаёт левый отступ ячейки. */
+.breakdown th:not(:first-child),
+.breakdown td {
+  padding-left: var(--breakdown-column-gap);
+}
+
+/* Длинное имя переносится, а не раздвигает таблицу; короткое не ломается посреди слова. */
+.breakdown tbody th {
+  max-width: var(--breakdown-name-width);
+  overflow-wrap: anywhere;
+}
+
+.breakdown thead th {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.breakdown tbody th {
+  font-weight: 600;
+}
+
+.outcome {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.outcome-receives {
+  color: var(--color-receives);
+}
+
+.outcome-gives {
+  color: var(--color-gives);
+}
+
+.outcome-settled {
+  color: var(--color-text-muted);
+}
+
+.breakdown > p {
+  margin-bottom: var(--space-3);
+}
+
+.breakdown > .note {
+  margin: var(--space-2) 0 0;
 }
 
 .note {
-  margin: 0.5rem 0 0;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
-  font-size: 0.9rem;
 }
 
 .notice {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: var(--section-gap);
-  padding: 0.75rem 1rem;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   background: var(--color-warning-background);
   border: 1px solid var(--color-warning-border);
-  border-radius: var(--radius-large);
+  border-radius: var(--radius-card);
 }
 
 .notice p {
@@ -162,6 +618,121 @@ h3 {
 
 .notice button {
   flex-shrink: 0;
+}
+
+.avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-avatar-text);
+  border-radius: var(--radius-pill);
+}
+
+.avatar-tone-1 {
+  background: var(--color-avatar-1);
+}
+
+.avatar-tone-2 {
+  background: var(--color-avatar-2);
+}
+
+.avatar-tone-3 {
+  background: var(--color-avatar-3);
+}
+
+.avatar-tone-4 {
+  background: var(--color-avatar-4);
+}
+
+.avatar-tone-5 {
+  background: var(--color-avatar-5);
+}
+
+.avatar-tone-6 {
+  background: var(--color-avatar-6);
+}
+
+.avatar-tone-7 {
+  background: var(--color-avatar-7);
+}
+
+.avatar-tone-8 {
+  background: var(--color-avatar-8);
+}
+
+/* Суммы выровнены по правому краю и одной ширины цифр, чтобы столбец читался. */
+.amount {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Без правила про движение пользователь с «уменьшить анимацию» не получает переходов. */
+@media (prefers-reduced-motion: no-preference) {
+  .button,
+  .icon-button,
+  .chip-toggle,
+  .chip-check,
+  input[type="text"],
+  select {
+    transition:
+      background-color var(--duration-fast),
+      border-color var(--duration-fast),
+      color var(--duration-fast),
+      filter var(--duration-fast),
+      opacity var(--duration-fast);
+  }
+}
+
+/* На телефоне поля уже, чтобы таблица «Как посчитано» помещалась без прокрутки при 360 px. */
+@media (max-width: 480px) {
+  main {
+    padding-inline: var(--space-2);
+  }
+
+  section {
+    padding: var(--space-3);
+  }
+
+  .breakdown table {
+    font-size: var(--font-size-small);
+  }
+
+  .breakdown th:not(:first-child),
+  .breakdown td {
+    padding-left: var(--breakdown-column-gap-compact);
+  }
+}
+
+/* 900 px — ширина, с которой две колонки удобнее одной (в @media нельзя взять значение из переменной). */
+@media (min-width: 900px) {
+  main {
+    max-width: var(--column-width-wide);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  /* Итог остаётся на виду при прокрутке; если он выше экрана, прокручивается сам.
+     Внутренний отступ нужен, чтобы рамка фокуса и тень у края не обрезались. */
+  .layout-side {
+    position: sticky;
+    top: var(--space-6);
+    max-height: calc(100dvh - 2 * var(--space-6));
+    padding: var(--space-1);
+    margin: calc(-1 * var(--space-1));
+    overflow-y: auto;
+  }
 }
 
 /* Текст для экранного диктора: на экране не виден, но остаётся в дереве доступности. */

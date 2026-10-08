@@ -8,6 +8,7 @@ import { readBillCode, writeBillCode } from "./address";
 import { createElement } from "./dom";
 import { createExpensesSection } from "./expenses-section";
 import { createLinkNotice, describeBillCodeError } from "./link-notice";
+import { createPageHeader } from "./page-header";
 import { createParticipantsSection } from "./participants-section";
 import { createShareSection } from "./share-section";
 import { createSummarySection } from "./summary-section";
@@ -25,15 +26,20 @@ export function mountApp(root: HTMLElement): () => void {
     },
   };
   const linkNotice = createLinkNotice();
+  const pageHeader = createPageHeader();
+  const participantsSection = createParticipantsSection(actions);
+  const expensesSection = createExpensesSection(actions);
+  const summarySection = createSummarySection();
+  const shareSection = createShareSection(actions);
   const sections = [
-    createParticipantsSection(actions),
-    createExpensesSection(actions),
-    createSummarySection(),
-    createShareSection(actions),
+    participantsSection,
+    expensesSection,
+    summarySection,
+    shareSection,
   ];
 
   function renderSections(): void {
-    for (const section of sections) section.render(bill);
+    for (const part of [pageHeader, ...sections]) part.render(bill);
   }
 
   function showOpenedBill(openedBill: Bill): void {
@@ -65,12 +71,19 @@ export function mountApp(root: HTMLElement): () => void {
     showOpenedBill(result.bill);
   }
 
-  const title = createElement("h1", { text: "Делим счёт" });
-  root.replaceChildren(
-    title,
-    linkNotice.element,
-    ...sections.map((section) => section.element),
-  );
+  const mainColumn = createElement("div", { className: "layout-main" }, [
+    participantsSection.element,
+    expensesSection.element,
+  ]);
+  const sideColumn = createElement("div", { className: "layout-side" }, [
+    summarySection.element,
+    shareSection.element,
+  ]);
+  const layout = createElement("div", { className: "layout" }, [
+    mainColumn,
+    sideColumn,
+  ]);
+  root.replaceChildren(pageHeader.element, linkNotice.element, layout);
   openBillFromAddress();
 
   window.addEventListener("hashchange", openBillFromAddress);

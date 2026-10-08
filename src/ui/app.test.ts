@@ -8,7 +8,7 @@ import { mountApp } from "./app";
 let root: HTMLElement;
 let unmountApp: () => void;
 
-function normalize(text: string | null): string {
+function normalize(text: string | null | undefined): string {
   return (text ?? "").replace(/\s/gu, " ").trim();
 }
 
@@ -23,20 +23,15 @@ function findInput(labelText: string): HTMLInputElement {
   return input;
 }
 
-function findButton(text: string): HTMLButtonElement {
+/** Кнопка по доступному имени: `aria-label`, а если его нет — видимый текст. */
+function findButton(name: string): HTMLButtonElement {
   const button = [...root.querySelectorAll("button")].find(
-    (candidate) => normalize(candidate.textContent) === text,
+    (candidate) =>
+      normalize(
+        candidate.getAttribute("aria-label") ?? candidate.textContent,
+      ) === name,
   );
-  if (button === undefined) throw new Error(`Не найдена кнопка «${text}»`);
-  return button;
-}
-
-function findByLabel(ariaLabel: string): HTMLButtonElement {
-  const button = root.querySelector<HTMLButtonElement>(
-    `[aria-label="${ariaLabel}"]`,
-  );
-  if (button === null)
-    throw new Error(`Не найден элемент с aria-label «${ariaLabel}»`);
+  if (button === undefined) throw new Error(`Не найдена кнопка «${name}»`);
   return button;
 }
 
@@ -70,8 +65,10 @@ function addExpenseBy(payer: string, amount: string): void {
 }
 
 function uncheckBeneficiary(name: string): void {
-  const label = [...root.querySelectorAll("label.checkbox")].find(
-    (candidate) => normalize(candidate.textContent) === name,
+  const label = [...root.querySelectorAll("label.chip-toggle")].find(
+    (candidate) =>
+      normalize(candidate.querySelector(".chip-name")?.textContent ?? null) ===
+      name,
   );
   const checkbox = label?.querySelector("input");
   if (checkbox === null || checkbox === undefined)
@@ -85,31 +82,64 @@ function readTexts(selector: string): string[] {
   );
 }
 
+function findSection(title: string): HTMLElement {
+  const section = [...root.querySelectorAll("section")].find(
+    (candidate) => candidate.querySelector("h2")?.textContent === title,
+  );
+  if (section === undefined) throw new Error(`Не найдена секция «${title}»`);
+  return section;
+}
+
+function readParticipantNames(): string[] {
+  return readTexts(".participant-name");
+}
+
+function readExpenses(): string[] {
+  const rows = [...findSection("Траты").querySelectorAll(".expense")];
+
+  return rows.map((row) => {
+    const payer = normalize(row.querySelector(".expense-payer")?.textContent);
+    const amount = normalize(row.querySelector(".expense-amount")?.textContent);
+    const beneficiaries = normalize(
+      row.querySelector(".expense-beneficiaries")?.textContent,
+    );
+
+    return `${payer} — ${amount}, ${beneficiaries}`;
+  });
+}
+
 function readParticipantsMessage(): string {
   return normalize(
-    root.querySelectorAll("section")[0]?.querySelector(".message")
-      ?.textContent ?? "",
+    findSection("Участники").querySelector(".message")?.textContent ?? "",
   );
 }
 
 function readExpensesMessage(): string {
   return normalize(
-    root.querySelectorAll("section")[1]?.querySelector(".message")
-      ?.textContent ?? "",
+    findSection("Траты").querySelector(".message")?.textContent ?? "",
   );
 }
 
 function readSummary(): string[] {
-  const summary = root.querySelectorAll("section")[2];
-  const items = [...(summary?.querySelectorAll(".transfers li") ?? [])];
-  if (items.length > 0) return items.map((item) => normalize(item.textContent));
-  return [normalize(summary?.querySelector("p")?.textContent ?? "")];
+  const summary = readSummarySection();
+  const cards = [...summary.querySelectorAll(".transfer")];
+  if (cards.length > 0) {
+    return cards.map((card) => {
+      const from = normalize(card.querySelector(".transfer-from")?.textContent);
+      const to = normalize(card.querySelector(".transfer-to")?.textContent);
+      const amount = normalize(
+        card.querySelector(".transfer-amount")?.textContent,
+      );
+
+      return `${from} → ${to}: ${amount}`;
+    });
+  }
+
+  return [normalize(summary.querySelector(".summary-status")?.textContent)];
 }
 
 function readSummarySection(): HTMLElement {
-  const summary = root.querySelectorAll("section")[2];
-  if (summary === undefined) throw new Error("Не найдена секция «Итог»");
-  return summary;
+  return findSection("Итог");
 }
 
 function findAnnouncement(): HTMLElement {
@@ -124,23 +154,24 @@ function readAnnouncement(): string {
 }
 
 function readRemoveExpenseLabels(): string[] {
-  const expenses = root.querySelectorAll("section")[1];
-  const buttons = [...(expenses?.querySelectorAll("button[aria-label]") ?? [])];
+  const buttons = [
+    ...findSection("Траты").querySelectorAll("button[aria-label]"),
+  ];
   return buttons.map((button) => normalize(button.getAttribute("aria-label")));
 }
 
 function findRemoveExpenseButton(description: string): HTMLButtonElement {
-  const label = `Удалить трату: ${description}`;
-  const button = [...root.querySelectorAll("button")].find(
-    (candidate) => normalize(candidate.getAttribute("aria-label")) === label,
-  );
-  if (button === undefined) throw new Error(`Не найдена кнопка «${label}»`);
-  return button;
+  return findButton(`Удалить трату: ${description}`);
 }
 
 function readBreakdown(): string[] {
-  const rows = readSummarySection().querySelectorAll(".breakdown li");
-  return [...rows].map((row) => normalize(row.textContent));
+  const rows = readSummarySection().querySelectorAll("tbody tr");
+
+  return [...rows].map((row) =>
+    [...row.querySelectorAll("th, td")]
+      .map((cell) => normalize(cell.textContent))
+      .join(" | "),
+  );
 }
 
 function readReason(): string | undefined {
@@ -197,9 +228,7 @@ describe("сценарий деления счёта", () => {
       "Боря → Аня: 300,00 ₽",
       "Вера → Аня: 300,00 ₽",
     ]);
-    expect(readTexts("section:nth-of-type(2) li span")).toEqual([
-      "Аня — 900,00 ₽, за всех",
-    ]);
+    expect(readExpenses()).toEqual(["Аня — 900,00 ₽, за всех"]);
 
     findRemoveExpenseButton("Аня — 900,00 ₽, за всех").click();
 
@@ -220,9 +249,7 @@ describe("сценарий деления счёта", () => {
     uncheckBeneficiary("Вера");
     addExpense("100");
 
-    expect(readTexts("section:nth-of-type(2) li span")).toEqual([
-      "Аня — 100,00 ₽, за: Аня, Боря",
-    ]);
+    expect(readExpenses()).toEqual(["Аня — 100,00 ₽, за: Аня, Боря"]);
   });
 
   it("после добавления траты очищает сумму, отмечает всех и оставляет плательщика", () => {
@@ -277,6 +304,134 @@ describe("сценарий деления счёта", () => {
   });
 });
 
+describe("шапка", () => {
+  function readOverview(): string[] {
+    return readTexts(".page-header .overview-item");
+  }
+
+  it("показывает название и подзаголовок", () => {
+    expect(root.querySelector(".page-header h1")?.textContent).toBe(
+      "Делим счёт",
+    );
+    expect(root.querySelector(".page-subtitle")?.textContent).toBe(
+      "Кто кому сколько должен — без таблиц и споров",
+    );
+  });
+
+  it("у пустого счёта показывает нули", () => {
+    expect(readOverview()).toEqual([
+      "0 участников",
+      "0 трат",
+      "потрачено 0,00 ₽",
+    ]);
+  });
+
+  it("считает участников, траты и всего потраченного", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    expect(readOverview()).toEqual([
+      "3 участника",
+      "1 трата",
+      "потрачено 900,00 ₽",
+    ]);
+  });
+});
+
+describe("кнопки удаления", () => {
+  it("это значки без видимого текста, а имя им даёт aria-label", () => {
+    addParticipants("Аня", "Боря");
+    addExpenseBy("Аня", "900");
+
+    const buttons = [...root.querySelectorAll("button.icon-button")];
+
+    expect(
+      buttons.map((button) => normalize(button.getAttribute("aria-label"))),
+    ).toEqual([
+      "Удалить участника Аня",
+      "Удалить участника Боря",
+      "Удалить трату: Аня — 900,00 ₽, за всех",
+    ]);
+    for (const button of buttons) {
+      expect(button.querySelector("svg")).not.toBeNull();
+      expect(normalize(button.textContent)).toBe("");
+    }
+  });
+});
+
+describe("аватары", () => {
+  function readToneClasses(container: Element | null): string[] {
+    const avatars = container?.querySelectorAll(".avatar") ?? [];
+
+    return [...avatars].flatMap((avatar) =>
+      [...avatar.classList].filter((name) => name.startsWith("avatar-tone-")),
+    );
+  }
+
+  it("у одного человека везде один и тот же оттенок", () => {
+    addParticipants("Аня", "Боря");
+    selectPayer("Боря");
+    addExpense("100");
+
+    const participantChip = root.querySelectorAll(".chip")[1] ?? null;
+    const expenseRow = root.querySelector(".expense");
+    const beneficiaryChip = root.querySelectorAll(".chip-toggle")[1] ?? null;
+    const tones = [participantChip, expenseRow, beneficiaryChip].map(
+      readToneClasses,
+    );
+
+    expect(tones[0]).toHaveLength(1);
+    expect(tones[1]).toEqual(tones[0]);
+    expect(tones[2]).toEqual(tones[0]);
+  });
+});
+
+describe("подсказки пустых состояний", () => {
+  function readHints(): string[] {
+    const hints = [
+      ...findSection("Участники").querySelectorAll<HTMLElement>(".empty-state"),
+      ...findSection("Траты").querySelectorAll<HTMLElement>(".empty-state"),
+    ];
+
+    return hints
+      .filter((hint) => !hint.hidden)
+      .map((hint) => normalize(hint.textContent));
+  }
+
+  const NO_PARTICIPANTS_HINT =
+    "Добавьте всех, кто участвует, — хватит имени. Себя тоже";
+  const NO_EXPENSES_HINT =
+    "Трат пока нет. Добавьте первую: кто платил, сколько и за кого";
+
+  it("без участников зовёт добавить людей и показывает остальные подсказки", () => {
+    expect(readHints()).toEqual([
+      NO_PARTICIPANTS_HINT,
+      "Сначала добавьте участников",
+    ]);
+  });
+
+  it("с участниками без трат зовёт добавить первую трату", () => {
+    addParticipant("Аня");
+
+    expect(readHints()).toEqual([NO_EXPENSES_HINT]);
+  });
+
+  it("после первой траты подсказка про траты исчезает", () => {
+    addParticipant("Аня");
+    addExpense("100");
+
+    expect(readHints()).toEqual([]);
+  });
+
+  it("у каждой подсказки есть значок, скрытый от диктора", () => {
+    for (const hint of root.querySelectorAll(".empty-state")) {
+      expect(hint.querySelector("svg")?.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    }
+  });
+});
+
 describe("объяснение итога", () => {
   const ROUNDING_TEXT =
     "Когда трата не делится поровну до копейки, у тех, кто выше в списке участников, доля на копейку больше.";
@@ -287,13 +442,45 @@ describe("объяснение итога", () => {
 
     expect(readParagraphs()).toContain("Всего потрачено: 900,00 ₽");
     expect(readBreakdown()).toEqual([
-      "Аня: заплачено 900,00 ₽, доля 300,00 ₽ — получает 600,00 ₽",
-      "Боря: заплачено 0,00 ₽, доля 300,00 ₽ — отдаёт 300,00 ₽",
-      "Вера: заплачено 0,00 ₽, доля 300,00 ₽ — отдаёт 300,00 ₽",
+      "Аня | 900,00 ₽ | 300,00 ₽ | получает +600,00 ₽",
+      "Боря | 0,00 ₽ | 300,00 ₽ | отдаёт −300,00 ₽",
+      "Вера | 0,00 ₽ | 300,00 ₽ | отдаёт −300,00 ₽",
     ]);
-    expect(readSummarySection().querySelector("h3")?.textContent).toBe(
-      "Как посчитано",
-    );
+    expect(
+      readSummarySection().querySelector("details > summary")?.textContent,
+    ).toBe("Как посчитано");
+  });
+
+  it("различает «получает» и «отдаёт» классом, знаком и словом", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    uncheckBeneficiary("Вера");
+    addExpenseBy("Аня", "100");
+
+    const outcomes = [...readSummarySection().querySelectorAll("td.outcome")];
+
+    expect(outcomes.map((outcome) => outcome.className)).toEqual([
+      "outcome outcome-receives",
+      "outcome outcome-gives",
+      "outcome outcome-settled",
+    ]);
+    expect(outcomes.map((outcome) => normalize(outcome.textContent))).toEqual([
+      "получает +50,00 ₽",
+      "отдаёт \u221250,00 ₽",
+      "в расчёте",
+    ]);
+  });
+
+  it("причину числа переводов прячет внутрь «Как посчитано»", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    const breakdown = readSummarySection().querySelector("details");
+
+    expect(breakdown?.open).toBe(false);
+    expect(breakdown?.querySelector(".transfers-reason")).not.toBeNull();
+    expect(
+      readSummarySection().querySelectorAll(".transfers-reason"),
+    ).toHaveLength(1);
   });
 
   it("объясняет, почему переводов именно столько", () => {
@@ -337,8 +524,8 @@ describe("объяснение итога", () => {
     expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
     expect(readReason()).toBeUndefined();
     expect(readBreakdown()).toEqual([
-      "Аня: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
-      "Боря: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
+      "Аня | 500,00 ₽ | 500,00 ₽ | в расчёте",
+      "Боря | 500,00 ₽ | 500,00 ₽ | в расчёте",
     ]);
   });
 
@@ -384,9 +571,7 @@ describe("объяснение итога", () => {
     addExpenseBy("Аня", "500");
 
     expect(readSummary()).toEqual(["Все в расчёте — переводы не нужны"]);
-    expect(readBreakdown()).toEqual([
-      "Аня: заплачено 500,00 ₽, доля 500,00 ₽ — в расчёте",
-    ]);
+    expect(readBreakdown()).toEqual(["Аня | 500,00 ₽ | 500,00 ₽ | в расчёте"]);
   });
 
   it("участник без трат попадает в разбор строкой «в расчёте»", () => {
@@ -395,9 +580,9 @@ describe("объяснение итога", () => {
     addExpenseBy("Аня", "100");
 
     expect(readBreakdown()).toEqual([
-      "Аня: заплачено 100,00 ₽, доля 50,00 ₽ — получает 50,00 ₽",
-      "Боря: заплачено 0,00 ₽, доля 50,00 ₽ — отдаёт 50,00 ₽",
-      "Вера: заплачено 0,00 ₽, доля 0,00 ₽ — в расчёте",
+      "Аня | 100,00 ₽ | 50,00 ₽ | получает +50,00 ₽",
+      "Боря | 0,00 ₽ | 50,00 ₽ | отдаёт −50,00 ₽",
+      "Вера | 0,00 ₽ | 0,00 ₽ | в расчёте",
     ]);
   });
 
@@ -411,9 +596,60 @@ describe("объяснение итога", () => {
   it("без трат не показывает «Как посчитано»", () => {
     addParticipants("Аня", "Боря");
 
-    expect(readSummarySection().querySelector("h3")).toBeNull();
-    expect(readSummarySection().querySelector(".breakdown")).toBeNull();
+    expect(readSummarySection().querySelector("details")).toBeNull();
     expect(readSummary()).toEqual([EMPTY_SUMMARY]);
+  });
+});
+
+describe("карточки переводов", () => {
+  it("над карточками пишет, сколько переводов нужно", () => {
+    addParticipants("Аня", "Боря", "Вера");
+    addExpenseBy("Аня", "900");
+
+    const count = readSummarySection().querySelector(".transfers-count");
+
+    expect(normalize(count?.textContent)).toBe(
+      "Чтобы рассчитаться, нужно 2 перевода",
+    );
+    expect(count?.nextElementSibling?.classList.contains("transfers")).toBe(
+      true,
+    );
+  });
+
+  it("когда все в расчёте, строки про число переводов нет", () => {
+    addParticipant("Аня");
+    addExpense("100");
+
+    expect(readSummarySection().querySelector(".transfers-count")).toBeNull();
+  });
+
+  it("у участников карточки те же оттенки аватаров, что в чипах", () => {
+    addParticipants("Аня", "Боря");
+    addExpenseBy("Боря", "100");
+
+    const chipTones = [...root.querySelectorAll(".chip .avatar")].map(
+      (avatar) => avatar.className,
+    );
+    const cardTones = [
+      ...readSummarySection().querySelectorAll(".transfer-people .avatar"),
+    ].map((avatar) => avatar.className);
+
+    expect(readSummary()).toEqual(["Аня → Боря: 50,00 ₽"]);
+    expect(cardTones).toEqual(chipTones);
+  });
+
+  it("подсказка в итоге видна без трат и когда все в расчёте", () => {
+    const summaryHint = (): string =>
+      normalize(
+        readSummarySection().querySelector(".empty-state")?.textContent,
+      );
+
+    expect(summaryHint()).toBe(EMPTY_SUMMARY);
+
+    addParticipant("Аня");
+    addExpense("100");
+
+    expect(summaryHint()).toBe("Все в расчёте — переводы не нужны");
   });
 });
 
@@ -430,9 +666,7 @@ describe("подписи кнопок удаления трат", () => {
 
     findRemoveExpenseButton("Аня — 300,00 ₽, за всех").click();
 
-    expect(readTexts("section:nth-of-type(2) li span")).toEqual([
-      "Аня — 900,00 ₽, за всех",
-    ]);
+    expect(readExpenses()).toEqual(["Аня — 900,00 ₽, за всех"]);
   });
 });
 
@@ -532,7 +766,7 @@ describe("ошибки ввода", () => {
     addParticipant("   ");
 
     expect(readParticipantsMessage()).toBe("Введите имя");
-    expect(readTexts("section:nth-of-type(1) li")).toEqual([]);
+    expect(readParticipantNames()).toEqual([]);
   });
 
   it("отклоняет повтор имени", () => {
@@ -540,7 +774,7 @@ describe("ошибки ввода", () => {
     addParticipant("аня");
 
     expect(readParticipantsMessage()).toBe("Участник с таким именем уже есть");
-    expect(readTexts("section:nth-of-type(1) li span")).toEqual(["Аня"]);
+    expect(readParticipantNames()).toEqual(["Аня"]);
   });
 
   it("отклоняет слишком длинное имя", () => {
@@ -549,13 +783,13 @@ describe("ошибки ввода", () => {
     expect(readParticipantsMessage()).toBe(
       "Имя длиннее 40 знаков — сократите его",
     );
-    expect(readTexts("section:nth-of-type(1) li")).toEqual([]);
+    expect(readParticipantNames()).toEqual([]);
   });
 
   it("отклоняет трату, после которой итог не поместится в расчёт", () => {
     addParticipant("Аня");
     addExpense("90071992547407,69");
-    const expenses = readTexts("section:nth-of-type(2) li span");
+    const expenses = readExpenses();
     const address = location.hash;
 
     addExpense("90071992547404,61");
@@ -563,7 +797,7 @@ describe("ошибки ввода", () => {
     expect(readExpensesMessage()).toBe(
       "Слишком большая сумма: общий итог счёта не поместится в расчёт",
     );
-    expect(readTexts("section:nth-of-type(2) li span")).toEqual(expenses);
+    expect(readExpenses()).toEqual(expenses);
     expect(location.hash).toBe(address);
   });
 
@@ -591,23 +825,20 @@ describe("ошибки ввода", () => {
     addParticipant("Боря");
     addExpense("100");
 
-    findByLabel("Удалить участника Боря").click();
+    findButton("Удалить участника Боря").click();
 
     expect(readParticipantsMessage()).toBe(
       "Нельзя удалить Боря: есть траты с этим участником. Сначала удалите их",
     );
-    expect(readTexts("section:nth-of-type(1) li span")).toEqual([
-      "Аня",
-      "Боря",
-    ]);
+    expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
   });
 
   it("удаляет участника без трат", () => {
     addParticipant("Аня");
 
-    findByLabel("Удалить участника Аня").click();
+    findButton("Удалить участника Аня").click();
 
-    expect(readTexts("section:nth-of-type(1) li")).toEqual([]);
+    expect(readParticipantNames()).toEqual([]);
   });
 
   it("сохраняет выбранного плательщика после добавления участника", () => {
@@ -623,13 +854,11 @@ describe("ошибки ввода", () => {
     addParticipants("Аня", "Боря");
     selectPayer("Боря");
 
-    findByLabel("Удалить участника Боря").click();
+    findButton("Удалить участника Боря").click();
     addExpense("100");
 
     expect(root.querySelector("select")?.selectedOptions[0]?.text).toBe("Аня");
-    expect(readTexts("section:nth-of-type(2) li span")).toEqual([
-      "Аня — 100,00 ₽, за всех",
-    ]);
+    expect(readExpenses()).toEqual(["Аня — 100,00 ₽, за всех"]);
   });
 
   it("после ошибки суммы и исправления добавляет трату и убирает сообщение", () => {
@@ -640,9 +869,7 @@ describe("ошибки ввода", () => {
     addExpense("250");
 
     expect(readExpensesMessage()).toBe("");
-    expect(readTexts("section:nth-of-type(2) li span")).toEqual([
-      "Аня — 250,00 ₽, за всех",
-    ]);
+    expect(readExpenses()).toEqual(["Аня — 250,00 ₽, за всех"]);
   });
 
   it("при превышении предела суммы оставляет введённое в форме", () => {
@@ -663,7 +890,7 @@ describe("экранирование", () => {
   it("показывает разметку в имени как обычный текст", () => {
     addParticipant("<b>Ли</b>");
 
-    expect(readTexts("section:nth-of-type(1) li span")).toEqual(["<b>Ли</b>"]);
+    expect(readParticipantNames()).toEqual(["<b>Ли</b>"]);
     expect(root.querySelector("b")).toBeNull();
   });
 });
@@ -709,14 +936,8 @@ describe("ссылка на счёт", () => {
     return normalize(readNotice()?.querySelector("p")?.textContent ?? "");
   }
 
-  function readParticipantNames(): string[] {
-    return readTexts("section:nth-of-type(1) li span");
-  }
-
   function readShareSection(): HTMLElement {
-    const share = root.querySelectorAll("section")[3];
-    if (share === undefined) throw new Error("Не найдена секция «Поделиться»");
-    return share;
+    return findSection("Поделиться");
   }
 
   function readShareMessage(): string {
@@ -786,7 +1007,7 @@ describe("ссылка на счёт", () => {
 
     it("после удаления последнего участника записывает код пустого счёта", () => {
       addParticipant("Аня");
-      findByLabel("Удалить участника Аня").click();
+      findButton("Удалить участника Аня").click();
 
       expect(location.hash).toBe(
         `#${encodeBill({ participants: [], expenses: [] })}`,
@@ -825,7 +1046,7 @@ describe("ссылка на счёт", () => {
       uncheckBeneficiary("Аня");
       uncheckBeneficiary("Боря");
       const participants = readParticipantNames();
-      const expenses = readTexts("section:nth-of-type(2) li span");
+      const expenses = readExpenses();
       const summary = readSummary();
       const breakdown = readBreakdown();
       const code = location.hash.slice(1);
@@ -833,7 +1054,7 @@ describe("ссылка на счёт", () => {
       openCode(code);
 
       expect(readParticipantNames()).toEqual(participants);
-      expect(readTexts("section:nth-of-type(2) li span")).toEqual(expenses);
+      expect(readExpenses()).toEqual(expenses);
       expect(readSummary()).toEqual(summary);
       expect(readBreakdown()).toEqual(breakdown);
       expect(readNotice()?.hidden).toBe(true);
@@ -911,23 +1132,32 @@ describe("ссылка на счёт", () => {
     it("«Закрыть» прячет сообщение и ничего больше не меняет", () => {
       openCode("1.!!!");
 
-      findByLabel("Закрыть сообщение").click();
+      findButton("Закрыть сообщение").click();
 
       expect(readNotice()?.hidden).toBe(true);
       expect(location.hash).toBe("#1.!!!");
     });
 
-    it("сообщение стоит между заголовком и секциями", () => {
+    it("делит секции на левую и правую колонки", () => {
+      const columns = [...(root.querySelector(".layout")?.children ?? [])];
+      const readTitles = (column: Element | undefined): string[] =>
+        [...(column?.querySelectorAll("h2") ?? [])].map(
+          (title) => title.textContent,
+        );
+
+      expect(columns.map((column) => column.className)).toEqual([
+        "layout-main",
+        "layout-side",
+      ]);
+      expect(readTitles(columns[0])).toEqual(["Участники", "Траты"]);
+      expect(readTitles(columns[1])).toEqual(["Итог", "Поделиться"]);
+    });
+
+    it("сообщение стоит между шапкой и секциями", () => {
       const children = [...root.children].map((child) => child.tagName);
 
-      expect(children).toEqual([
-        "H1",
-        "DIV",
-        "SECTION",
-        "SECTION",
-        "SECTION",
-        "SECTION",
-      ]);
+      expect(children).toEqual(["HEADER", "DIV", "DIV"]);
+      expect(root.children[1]).toBe(readNotice());
       expect(readNotice()?.hidden).toBe(true);
     });
   });

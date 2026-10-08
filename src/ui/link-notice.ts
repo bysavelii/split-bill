@@ -27,6 +27,7 @@ export function createLinkNotice(): LinkNotice {
   const text = createElement("p");
   const closeButton = createElement("button", {
     text: "Закрыть",
+    className: "button button-secondary",
     attributes: { type: "button", "aria-label": "Закрыть сообщение" },
   });
   const element = createElement(

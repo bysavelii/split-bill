@@ -8,10 +8,15 @@ import {
   type NameProblem,
   type Participant,
 } from "../bill/bill";
+import { createAvatar } from "./avatar";
 import { createElement, createField, createMessageArea } from "./dom";
+import { createEmptyState } from "./empty-state";
+import { createRemoveButton } from "./remove-button";
 import type { BillActions, Section } from "./section";
 
 const NAME_INPUT_ID = "participant-name";
+const NO_PARTICIPANTS_TEXT =
+  "Добавьте всех, кто участвует, — хватит имени. Себя тоже";
 
 function describeNameProblem(problem: NameProblem): string {
   switch (problem) {
@@ -30,11 +35,13 @@ export function createParticipantsSection(actions: BillActions): Section {
   });
   const addButton = createElement("button", {
     text: "Добавить",
+    className: "button button-primary",
     attributes: { type: "submit" },
   });
   const message = createMessageArea();
-  const list = createElement("ul", { className: "list" });
-  const form = createElement("form", { className: "form" }, [
+  const emptyState = createEmptyState("people", NO_PARTICIPANTS_TEXT);
+  const chips = createElement("ul", { className: "chips" });
+  const form = createElement("form", { className: "inline-form" }, [
     createField("Имя", nameInput),
     addButton,
   ]);
@@ -42,7 +49,8 @@ export function createParticipantsSection(actions: BillActions): Section {
     createElement("h2", { text: "Участники" }),
     form,
     message,
-    list,
+    emptyState,
+    chips,
   ]);
 
   form.addEventListener("submit", (event) => {
@@ -76,27 +84,28 @@ export function createParticipantsSection(actions: BillActions): Section {
     actions.changeBill(removeParticipant(bill, participant.id));
   }
 
-  function createRow(participant: Participant): HTMLLIElement {
-    const removeButton = createElement("button", {
-      text: "Удалить",
-      attributes: {
-        type: "button",
-        "aria-label": `Удалить участника ${participant.name}`,
-      },
-    });
+  function createChip(participant: Participant): HTMLLIElement {
+    const removeButton = createRemoveButton(
+      `Удалить участника ${participant.name}`,
+    );
     removeButton.addEventListener("click", () => {
       requestRemoval(participant);
     });
 
-    return createElement("li", {}, [
-      createElement("span", { text: participant.name }),
+    return createElement("li", { className: "chip" }, [
+      createAvatar(participant.name),
+      createElement("span", {
+        className: "participant-name",
+        text: participant.name,
+      }),
       removeButton,
     ]);
   }
 
   function render(bill: Bill): void {
     message.textContent = "";
-    list.replaceChildren(...bill.participants.map(createRow));
+    emptyState.hidden = bill.participants.length > 0;
+    chips.replaceChildren(...bill.participants.map(createChip));
   }
 
   return { element, render };

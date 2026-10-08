@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Balance } from "../settlement/balances";
 import {
-  describeParticipantTotals,
+  describeBalanceOutcome,
   describeTransferCount,
   formatTransferCount,
 } from "./settlement-explanation";
@@ -10,36 +9,26 @@ function normalize(text: string): string {
   return text.replace(/\s/gu, " ");
 }
 
-function createBalance(paid: number, share: number): Balance {
-  return { participantId: "anna", paid, share, amount: paid - share };
-}
+describe("describeBalanceOutcome", () => {
+  it("пишет «получает» со знаком плюс, когда участнику должны", () => {
+    const outcome = describeBalanceOutcome(60_000);
 
-describe("describeParticipantTotals", () => {
-  it("пишет «получает», когда заплачено больше доли", () => {
-    const text = describeParticipantTotals(
-      "Аня",
-      createBalance(90_000, 30_000),
-    );
-
-    expect(normalize(text)).toBe(
-      "Аня: заплачено 900,00 ₽, доля 300,00 ₽ — получает 600,00 ₽",
-    );
+    expect(outcome.kind).toBe("receives");
+    expect(normalize(outcome.text)).toBe("получает +600,00 ₽");
   });
 
-  it("пишет «отдаёт» с суммой по модулю, когда заплачено меньше доли", () => {
-    const text = describeParticipantTotals("Боря", createBalance(0, 30_000));
+  it("пишет «отдаёт» с настоящим минусом и суммой по модулю, когда должен он", () => {
+    const outcome = describeBalanceOutcome(-30_000);
 
-    expect(normalize(text)).toBe(
-      "Боря: заплачено 0,00 ₽, доля 300,00 ₽ — отдаёт 300,00 ₽",
-    );
+    expect(outcome.kind).toBe("gives");
+    expect(normalize(outcome.text)).toBe("отдаёт \u2212300,00 ₽");
   });
 
-  it("пишет «в расчёте», когда заплачено ровно по доле", () => {
-    const text = describeParticipantTotals("Вера", createBalance(5_000, 5_000));
-
-    expect(normalize(text)).toBe(
-      "Вера: заплачено 50,00 ₽, доля 50,00 ₽ — в расчёте",
-    );
+  it("пишет «в расчёте», когда баланс нулевой", () => {
+    expect(describeBalanceOutcome(0)).toEqual({
+      kind: "settled",
+      text: "в расчёте",
+    });
   });
 });
 
