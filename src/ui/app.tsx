@@ -1,5 +1,6 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
 import { EMPTY_BILL, type Bill } from "../bill/bill";
+import type { Currency } from "../bill/currency";
 import {
   decodeBill,
   encodeBill,
@@ -18,6 +19,9 @@ interface NoticeState {
   readonly isHidden: boolean;
 }
 
+// The only currency until the page can choose one.
+const BILL_CURRENCY: Currency = "RUB";
+
 const HIDDEN_NOTICE: NoticeState = { text: "", isHidden: true };
 
 export function App() {
@@ -27,7 +31,7 @@ export function App() {
 
   function changeBill(changedBill: Bill): void {
     setBill(changedBill);
-    writeBillCode(encodeBill(changedBill));
+    writeBillCode(encodeBill(changedBill, BILL_CURRENCY));
   }
 
   function showOpenedBill(openedBill: Bill): void {
@@ -87,7 +91,11 @@ export function App() {
         </div>
         <div class="layout-side">
           <SummarySection bill={bill()} />
-          <ShareSection bill={bill()} onBillChange={changeBill} />
+          <ShareSection
+            bill={bill()}
+            currency={BILL_CURRENCY}
+            onBillChange={changeBill}
+          />
         </div>
       </div>
     </>

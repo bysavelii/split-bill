@@ -7,9 +7,11 @@ import {
   getParticipantName,
   type Bill,
 } from "../bill/bill";
+import { CURRENCIES, type Currency } from "../bill/currency";
 import { encodeBase64Url } from "./base64-url";
 import {
   BILL_CODE_VERSION,
+  LEGACY_BILL_CODE_VERSION,
   MAX_BILL_CODE_LENGTH,
   decodeBill,
   encodeBill,
@@ -34,12 +36,18 @@ function describeWithoutIds(bill: Bill): unknown {
   };
 }
 
-function codeFromText(jsonText: string): string {
-  return `${String(BILL_CODE_VERSION)}.${encodeBase64Url(jsonText)}`;
+function codeFromText(version: number, jsonText: string): string {
+  return `${String(version)}.${encodeBase64Url(jsonText)}`;
 }
 
+/** A code of the current version with an arbitrary payload. */
 function codeFromJson(json: unknown): string {
-  return codeFromText(JSON.stringify(json));
+  return codeFromText(BILL_CODE_VERSION, JSON.stringify(json));
+}
+
+/** A code of the version without a currency, built by hand: the app no longer writes such codes. */
+function legacyCodeFromJson(json: unknown): string {
+  return codeFromText(LEGACY_BILL_CODE_VERSION, JSON.stringify(json));
 }
 
 function readError(code: string): BillCodeError {
@@ -50,19 +58,27 @@ function readError(code: string): BillCodeError {
   return result.error;
 }
 
-function readDecodedBill(code: string): Bill {
+function readDecoded(code: string): {
+  bill: Bill;
+  currency: Currency | undefined;
+} {
   const result = decodeBill(code);
   if (result.kind === "failed") {
     throw new Error(`The bill did not open: ${result.error.kind}`);
   }
 
-  return result.bill;
+  return { bill: result.bill, currency: result.currency };
 }
 
-function expectRoundTrip(bill: Bill): void {
-  const decoded = readDecodedBill(encodeBill(bill));
+function readDecodedBill(code: string): Bill {
+  return readDecoded(code).bill;
+}
 
-  expect(describeWithoutIds(decoded)).toEqual(describeWithoutIds(bill));
+function expectRoundTrip(bill: Bill, currency: Currency = "USD"): void {
+  const decoded = readDecoded(encodeBill(bill, currency));
+
+  expect(describeWithoutIds(decoded.bill)).toEqual(describeWithoutIds(bill));
+  expect(decoded.currency).toBe(currency);
 }
 
 describe("round trip of encodeBill and decodeBill", () => {
@@ -147,10 +163,17 @@ describe("round trip of encodeBill and decodeBill", () => {
     });
   });
 
-  it("the code consists of the version and base64url characters", () => {
-    const code = encodeBill({ participants: [anna, boris], expenses: [] });
+  it.each(CURRENCIES)("keeps the currency %s", (currency) => {
+    expectRoundTrip({ participants: [anna, boris], expenses: [] }, currency);
+  });
 
-    expect(code).toMatch(/^1\.[A-Za-z0-9_-]*$/u);
+  it("the code consists of the version and base64url characters", () => {
+    const code = encodeBill(
+      { participants: [anna, boris], expenses: [] },
+      "USD",
+    );
+
+    expect(code).toMatch(/^2\.[A-Za-z0-9_-]*$/u);
   });
 
   it("does not change a frozen bill", () => {
@@ -165,7 +188,7 @@ describe("round trip of encodeBill and decodeBill", () => {
       expenses: Object.freeze([Object.freeze(expense)]),
     });
 
-    expect(() => encodeBill(bill)).not.toThrow();
+    expect(() => encodeBill(bill, "USD")).not.toThrow();
   });
 
   it("throws an error if an expense refers to an unknown participant", () => {
@@ -181,7 +204,7 @@ describe("round trip of encodeBill and decodeBill", () => {
       ],
     };
 
-    expect(() => encodeBill(bill)).toThrow(Error);
+    expect(() => encodeBill(bill, "USD")).toThrow(Error);
   });
 });
 
@@ -205,7 +228,7 @@ describe("identifiers of a parsed bill", () => {
   };
 
   it("are unique, and expenses refer to the parsed participants", () => {
-    const decoded = readDecodedBill(encodeBill(bill));
+    const decoded = readDecodedBill(encodeBill(bill, "USD"));
 
     const participantIds = decoded.participants.map(({ id }) => id);
     const expenseIds = decoded.expenses.map(({ id }) => id);
@@ -218,15 +241,15 @@ describe("identifiers of a parsed bill", () => {
   });
 
   it("are the same when one code is parsed again", () => {
-    const code = encodeBill(bill);
+    const code = encodeBill(bill, "USD");
 
     expect(decodeBill(code)).toEqual(decodeBill(code));
   });
 });
 
 describe("format version", () => {
-  it.each(["0", "2", "99"])("version %s is not supported", (version) => {
-    const error = readError(`${version}.${encodeBase64Url("[[],[]]")}`);
+  it.each(["0", "3", "99"])("version %s is not supported", (version) => {
+    const error = readError(`${version}.${encodeBase64Url('[[],[],"USD"]')}`);
 
     expect(error).toEqual({
       kind: "unsupportedVersion",
@@ -235,7 +258,42 @@ describe("format version", () => {
   });
 
   it("recognizes a version of another format without parsing the payload", () => {
-    expect(readError("2.!!!").kind).toBe("unsupportedVersion");
+    expect(readError("3.!!!").kind).toBe("unsupportedVersion");
+  });
+});
+
+describe("literal codes", () => {
+  // Literal codes, not produced by `encodeBill`: links already shared in the wild must keep opening,
+  // so these strings must stay the same whatever the code is built with.
+  const EXPECTED_BILL = {
+    names: ["Ann", "Bob"],
+    expenses: [
+      { payer: "Ann", amount: 12_345, beneficiaries: ["Ann", "Bob"] },
+      { payer: "Bob", amount: 500, beneficiaries: ["Bob"] },
+    ],
+  };
+  const LITERAL_V1_CODE =
+    "1.W1siQW5uIiwiQm9iIl0sW1swLDEyMzQ1LFswLDFdXSxbMSw1MDAsWzFdXV1d";
+  const LITERAL_V2_USD_CODE =
+    "2.W1siQW5uIiwiQm9iIl0sW1swLDEyMzQ1LFswLDFdXSxbMSw1MDAsWzFdXV0sIlVTRCJd";
+  const LITERAL_V2_RUB_CODE =
+    "2.W1siQW5uIiwiQm9iIl0sW1swLDEyMzQ1LFswLDFdXSxbMSw1MDAsWzFdXV0sIlJVQiJd";
+
+  it("version 1 opens the bill without a currency", () => {
+    const decoded = readDecoded(LITERAL_V1_CODE);
+
+    expect(describeWithoutIds(decoded.bill)).toEqual(EXPECTED_BILL);
+    expect(decoded.currency).toBeUndefined();
+  });
+
+  it.each([
+    ["USD", LITERAL_V2_USD_CODE],
+    ["RUB", LITERAL_V2_RUB_CODE],
+  ])("version 2 opens the bill in %s", (currency, code) => {
+    const decoded = readDecoded(code);
+
+    expect(describeWithoutIds(decoded.bill)).toEqual(EXPECTED_BILL);
+    expect(decoded.currency).toBe(currency);
   });
 });
 
@@ -264,19 +322,19 @@ describe("corrupted codes", () => {
 
 describe("length limit", () => {
   it("is checked before the version", () => {
-    const code = `2.${"A".repeat(MAX_BILL_CODE_LENGTH)}`;
+    const code = `3.${"A".repeat(MAX_BILL_CODE_LENGTH)}`;
 
     expect(readError(code).kind).toBe("malformed");
   });
 
   it("does not stop a code of exactly the limit length from reaching the version check", () => {
-    const code = `2.${"A".repeat(MAX_BILL_CODE_LENGTH - 2)}`;
+    const code = `3.${"A".repeat(MAX_BILL_CODE_LENGTH - 2)}`;
 
     expect(readError(code).kind).toBe("unsupportedVersion");
   });
 });
 
-describe("invalid bill", () => {
+describe("invalid bill of the version without a currency", () => {
   const validExpense = [0, 100, [0]];
 
   it.each([
@@ -334,23 +392,67 @@ describe("invalid bill", () => {
       ],
     ],
   ])("%s — invalidBill", (_title, json) => {
-    expect(readError(codeFromJson(json)).kind).toBe("invalidBill");
+    expect(readError(legacyCodeFromJson(json)).kind).toBe("invalidBill");
   });
 
   it("amount 1e400 is invalidBill", () => {
-    const code = codeFromText('[["Аня"],[[0,1e400,[0]]]]');
+    const code = codeFromText(
+      LEGACY_BILL_CODE_VERSION,
+      '[["Аня"],[[0,1e400,[0]]]]',
+    );
 
     expect(readError(code).kind).toBe("invalidBill");
   });
 
   it("a bill without participants and expenses is a valid empty bill", () => {
-    expect(readDecodedBill(codeFromJson([[], []]))).toEqual(EMPTY_BILL);
+    expect(readDecodedBill(legacyCodeFromJson([[], []]))).toEqual(EMPTY_BILL);
+  });
+
+  it("a bill with a currency in the payload is invalidBill", () => {
+    expect(readError(legacyCodeFromJson([[], [], "USD"])).kind).toBe(
+      "invalidBill",
+    );
+  });
+});
+
+describe("invalid bill of the current version", () => {
+  it.each([
+    ["missing currency", [["Аня"], []]],
+    ["unknown currency", [["Аня"], [], "EUR"]],
+    ["lowercase currency", [["Аня"], [], "usd"]],
+    ["currency is a number", [["Аня"], [], 840]],
+    ["currency is null", [["Аня"], [], null]],
+    ["currency is a list", [["Аня"], [], ["USD"]]],
+    ["tuple of 4 elements", [["Аня"], [], "USD", 0]],
+    ["currency before the bill", ["USD", ["Аня"], []]],
+    ["invalid expense with a valid currency", [["Аня"], [[0, 0, [0]]], "USD"]],
+  ])("%s — invalidBill", (_title, json) => {
+    expect(readError(codeFromJson(json)).kind).toBe("invalidBill");
+  });
+
+  it("a bill without participants and expenses is a valid empty bill", () => {
+    expect(readDecoded(codeFromJson([[], [], "RUB"]))).toEqual({
+      bill: EMPTY_BILL,
+      currency: "RUB",
+    });
   });
 });
 
 describe("parsing robustness", () => {
   it("does not throw on arbitrary strings", () => {
-    const codes = ["", "1.", "1.[[", "\u0000", "1.😀", "..", "1.====", "-1.x"];
+    const codes = [
+      "",
+      "1.",
+      "1.[[",
+      "2.",
+      "2.[[",
+      "\u0000",
+      "1.😀",
+      "2.😀",
+      "..",
+      "1.====",
+      "-1.x",
+    ];
 
     for (const code of codes) {
       expect(() => decodeBill(code)).not.toThrow();
@@ -417,16 +519,23 @@ function createRandomBill(random: () => number): Bill {
   return { participants, expenses };
 }
 
+function createRandomCurrency(random: () => number): Currency {
+  const index = Math.floor(random() * CURRENCIES.length);
+
+  return CURRENCIES[index] ?? "USD";
+}
+
 describe("encoding properties on pseudo-random bills", () => {
   const ITERATIONS = 300;
 
-  it("the round trip keeps the bill, and the code matches the pattern", () => {
+  it("the round trip keeps the bill and the currency, and the code matches the pattern", () => {
     const random = createRandom(20_240_607);
 
     for (let iteration = 0; iteration < ITERATIONS; iteration += 1) {
       const bill = createRandomBill(random);
-      expectRoundTrip(bill);
-      expect(encodeBill(bill)).toMatch(/^1\.[A-Za-z0-9_-]*$/u);
+      const currency = createRandomCurrency(random);
+      expectRoundTrip(bill, currency);
+      expect(encodeBill(bill, currency)).toMatch(/^2\.[A-Za-z0-9_-]*$/u);
     }
   });
 
@@ -435,7 +544,10 @@ describe("encoding properties on pseudo-random bills", () => {
     const alphabet = Array.from("AZaz09-_.=+/ %я😀");
 
     for (let iteration = 0; iteration < ITERATIONS; iteration += 1) {
-      const code = encodeBill(createRandomBill(random));
+      const code = encodeBill(
+        createRandomBill(random),
+        createRandomCurrency(random),
+      );
       const position = Math.floor(random() * (code.length + 1));
       const replacement =
         alphabet[Math.floor(random() * alphabet.length)] ?? "";

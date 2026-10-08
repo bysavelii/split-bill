@@ -994,7 +994,7 @@ describe("bill link", () => {
       addParticipant("Боря");
 
       const expectedBill: Bill = { participants: [anna, boris], expenses: [] };
-      expect(location.hash).toBe(`#${encodeBill(expectedBill)}`);
+      expect(location.hash).toBe(`#${encodeBill(expectedBill, "RUB")}`);
     });
 
     it("after an expense is added contains the code of the bill with the expense", () => {
@@ -1003,7 +1003,7 @@ describe("bill link", () => {
       selectPayer("Аня");
       addExpense("900");
 
-      expect(location.hash).toBe(`#${encodeBill(billWithDinner)}`);
+      expect(location.hash).toBe(`#${encodeBill(billWithDinner, "RUB")}`);
     });
 
     it("after the last participant is removed writes the code of an empty bill", () => {
@@ -1011,7 +1011,7 @@ describe("bill link", () => {
       findButton("Удалить участника Аня").click();
 
       expect(location.hash).toBe(
-        `#${encodeBill({ participants: [], expenses: [] })}`,
+        `#${encodeBill({ participants: [], expenses: [] }, "RUB")}`,
       );
     });
 
@@ -1062,7 +1062,7 @@ describe("bill link", () => {
     });
 
     it("after opening, new participants do not clash with the parsed ones", () => {
-      openCode(encodeBill(billWithDinner));
+      openCode(encodeBill(billWithDinner, "RUB"));
 
       addParticipant("Вера");
       selectPayer("Вера");
@@ -1073,7 +1073,7 @@ describe("bill link", () => {
     });
 
     it("opening a bill does not write the address itself", () => {
-      const code = encodeBill(billWithDinner);
+      const code = encodeBill(billWithDinner, "RUB");
       const pageUrl = `/split-bill/?x=1#${code}`;
 
       openAddress(pageUrl);
@@ -1087,7 +1087,7 @@ describe("bill link", () => {
       ["bill with repeated names", invalidBillCode(), MALFORMED_NOTICE],
       [
         "another version",
-        `2.${encodeBase64Url("[[],[]]")}`,
+        `3.${encodeBase64Url("[[],[]]")}`,
         UNSUPPORTED_NOTICE,
       ],
     ])(
@@ -1113,7 +1113,7 @@ describe("bill link", () => {
       expect(readParticipantNames()).toEqual([]);
       expect(readSummary()).toEqual([EMPTY_SUMMARY]);
 
-      changeAddressOnPage(encodeBill(billWithDinner));
+      changeAddressOnPage(encodeBill(billWithDinner, "RUB"));
 
       expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
     });
@@ -1131,7 +1131,7 @@ describe("bill link", () => {
 
       const expectedBill: Bill = { participants: [anna], expenses: [] };
       expect(readParticipantNames()).toEqual(["Аня"]);
-      expect(location.hash).toBe(`#${encodeBill(expectedBill)}`);
+      expect(location.hash).toBe(`#${encodeBill(expectedBill, "RUB")}`);
     });
 
     it('"Закрыть" hides the message and changes nothing else', () => {
@@ -1169,7 +1169,7 @@ describe("bill link", () => {
 
   describe("address change on an open page", () => {
     it("shows the bill from a new valid code", () => {
-      changeAddressOnPage(encodeBill(billWithDinner));
+      changeAddressOnPage(encodeBill(billWithDinner, "RUB"));
 
       expect(readParticipantNames()).toEqual(["Аня", "Боря"]);
       expect(readSummary()).toEqual(["Боря → Аня: 450,00 ₽"]);
@@ -1193,18 +1193,20 @@ describe("bill link", () => {
           },
         ],
       };
-      openCode(encodeBill(billWithDinner));
+      openCode(encodeBill(billWithDinner, "RUB"));
       expect(readAnnouncement()).toBe("Итог: 1 перевод");
 
-      changeAddressOnPage(encodeBill({ participants: [anna], expenses: [] }));
+      changeAddressOnPage(
+        encodeBill({ participants: [anna], expenses: [] }, "RUB"),
+      );
       expect(readAnnouncement()).toBe("Итог: трат пока нет");
 
-      changeAddressOnPage(encodeBill(lunch));
+      changeAddressOnPage(encodeBill(lunch, "RUB"));
       expect(readAnnouncement()).toBe("Итог: 1 перевод");
     });
 
     it("with a broken code the screen reader overview says there are no expenses", () => {
-      openCode(encodeBill(billWithDinner));
+      openCode(encodeBill(billWithDinner, "RUB"));
       expect(readAnnouncement()).toBe("Итог: 1 перевод");
 
       changeAddressOnPage("1.!!!");
@@ -1224,13 +1226,13 @@ describe("bill link", () => {
     it("with a valid code hides the previous message", () => {
       openCode("1.!!!");
 
-      changeAddressOnPage(encodeBill(billWithDinner));
+      changeAddressOnPage(encodeBill(billWithDinner, "RUB"));
 
       expect(readNotice()?.hidden).toBe(true);
     });
 
     it("with an empty fragment shows an empty bill", () => {
-      openCode(encodeBill(billWithDinner));
+      openCode(encodeBill(billWithDinner, "RUB"));
 
       changeAddressOnPage("");
 
@@ -1238,7 +1240,7 @@ describe("bill link", () => {
     });
 
     it("does not write the address, so it causes no loop", () => {
-      const code = encodeBill(billWithDinner);
+      const code = encodeBill(billWithDinner, "RUB");
 
       changeAddressOnPage(code);
 
@@ -1248,7 +1250,7 @@ describe("bill link", () => {
     it("after the app is removed stops reacting to the address", () => {
       unmountApp();
 
-      changeAddressOnPage(encodeBill(billWithDinner));
+      changeAddressOnPage(encodeBill(billWithDinner, "RUB"));
 
       expect(readParticipantNames()).toEqual([]);
     });
@@ -1262,7 +1264,10 @@ describe("bill link", () => {
       openAddress("/split-bill/");
       addParticipant("Аня");
       addParticipant("Боря");
-      const code = encodeBill({ participants: [anna, boris], expenses: [] });
+      const code = encodeBill(
+        { participants: [anna, boris], expenses: [] },
+        "RUB",
+      );
 
       findButton("Поделиться").click();
 
@@ -1376,6 +1381,7 @@ describe("bill link", () => {
       expect(result).toEqual({
         kind: "decoded",
         bill: { participants: [], expenses: [] },
+        currency: "RUB",
       });
     });
 

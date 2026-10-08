@@ -1,11 +1,16 @@
 /**
- * The bill code for a link, format version 1: `<version>.<payload>`, for example `1.W1tdLFtdXQ`.
+ * The bill code for a link: `<version>.<payload>`, for example `2.W1tdLFtdLCJVU0QiXQ`.
  *
- * The payload is the JSON `[names, expenses]`, converted to UTF-8 and then to base64url without `=`.
- * An expense is written as `[payer index, kopecks, recipient indexes]`:
+ * The payload is JSON converted to UTF-8 and then to base64url without `=`. Two versions are read:
+ * - version 2, the current one, writes `[names, expenses, currency code]`, where the currency is
+ *   an ISO 4217 code such as `"USD"`;
+ * - version 1, written by older releases, is `[names, expenses]` without a currency: such a link
+ *   still opens, and the page chooses the currency itself.
+ *
+ * An expense is written as `[payer index, minor units, recipient indexes]`:
  * participants are reindexed in order, so identifiers do not get into the link.
  * The order of participants, expenses and recipients is kept, because it decides
- * who gets the extra kopecks.
+ * who gets the extra minor units.
  *
  * The version stands before the dot and in plain text, not inside base64: a link of another version
  * can be recognized without parsing the payload, whose format we do not know. The dot is not in the
@@ -21,9 +26,12 @@ import {
   type Participant,
   type ParticipantId,
 } from "../bill/bill";
+import { isCurrency, type Currency } from "../bill/currency";
 import { decodeBase64Url, encodeBase64Url } from "./base64-url";
 
-export const BILL_CODE_VERSION = 1;
+export const BILL_CODE_VERSION = 2;
+/** The version without a currency: links of it are still opened. */
+export const LEGACY_BILL_CODE_VERSION = 1;
 /**
  * Limit of the code length: protection against gigantic links. A bill that does not fit the limit
  * (hundreds of participants or thousands of expenses) is deliberately not supported: the link to it
@@ -33,7 +41,8 @@ export const MAX_BILL_CODE_LENGTH = 100_000;
 
 const VERSION_SEPARATOR = ".";
 const VERSION_PATTERN = /^\d+$/u;
-const BILL_TUPLE_LENGTH = 2;
+const LEGACY_BILL_TUPLE_LENGTH = 2;
+const BILL_TUPLE_LENGTH = 3;
 const EXPENSE_TUPLE_LENGTH = 3;
 
 export type BillCodeError =
@@ -42,11 +51,26 @@ export type BillCodeError =
   | { readonly kind: "invalidBill"; readonly reason: string };
 
 export type DecodeBillResult =
-  | { readonly kind: "decoded"; readonly bill: Bill }
+  | {
+      readonly kind: "decoded";
+      readonly bill: Bill;
+      /** `undefined` for a link of the version without a currency: the page chooses its own. */
+      readonly currency: Currency | undefined;
+    }
   | { readonly kind: "failed"; readonly error: BillCodeError };
 
 type EncodedExpense = readonly [number, number, readonly number[]];
-type EncodedBill = readonly [readonly string[], readonly EncodedExpense[]];
+type EncodedBill = readonly [
+  readonly string[],
+  readonly EncodedExpense[],
+  Currency,
+];
+
+/** The payload of a code with the reader of the format version it was written in. */
+interface VersionedPayload {
+  readonly readBill: BillReader;
+  readonly encodedPayload: string;
+}
 
 /** A raw expense from JSON: the types of its parts are not checked yet. */
 interface RawExpense {
@@ -58,6 +82,7 @@ interface RawExpense {
 interface RawBill {
   readonly names: readonly string[];
   readonly expenses: readonly RawExpense[];
+  readonly currency: Currency | undefined;
 }
 
 /** The result of one parsing step: a value for the next step or an error. */
@@ -67,7 +92,16 @@ type Step<Value> =
 
 type FailedStep = Extract<Step<never>, { readonly kind: "failed" }>;
 
-export function encodeBill(bill: Bill): string {
+/** Turns the parsed JSON of one format version into a raw bill. */
+type BillReader = (json: unknown) => Step<RawBill>;
+
+/** The single source of truth for the supported versions: a version missing here is not opened. */
+const BILL_READERS: ReadonlyMap<number, BillReader> = new Map([
+  [BILL_CODE_VERSION, readCurrentBill],
+  [LEGACY_BILL_CODE_VERSION, readLegacyBill],
+]);
+
+export function encodeBill(bill: Bill, currency: Currency): string {
   const indexById = new Map(
     bill.participants.map((participant, index) => [participant.id, index]),
   );
@@ -76,20 +110,21 @@ export function encodeBill(bill: Bill): string {
     encodeExpense(expense, indexById),
   );
 
-  const encodedBill: EncodedBill = [names, expenses];
+  const encodedBill: EncodedBill = [names, expenses, currency];
   const payload = encodeBase64Url(JSON.stringify(encodedBill));
 
   return [String(BILL_CODE_VERSION), payload].join(VERSION_SEPARATOR);
 }
 
 export function decodeBill(code: string): DecodeBillResult {
-  const encodedPayload = splitVersion(code);
-  if (encodedPayload.kind === "failed") return encodedPayload;
+  const versionedPayload = splitVersion(code);
+  if (versionedPayload.kind === "failed") return versionedPayload;
 
-  const json = parsePayload(encodedPayload.value);
+  const { readBill, encodedPayload } = versionedPayload.value;
+  const json = parsePayload(encodedPayload);
   if (json.kind === "failed") return json;
 
-  const rawBill = readRawBill(json.value);
+  const rawBill = readBill(json.value);
   if (rawBill.kind === "failed") return rawBill;
 
   const bill = buildBill(rawBill.value);
@@ -101,7 +136,11 @@ export function decodeBill(code: string): DecodeBillResult {
     );
   }
 
-  return { kind: "decoded", bill: bill.value };
+  return {
+    kind: "decoded",
+    bill: bill.value,
+    currency: rawBill.value.currency,
+  };
 }
 
 function encodeExpense(
@@ -127,7 +166,7 @@ function findParticipantIndex(
 }
 
 /** Checks the length and the version and returns the payload without parsing it. */
-function splitVersion(code: string): Step<string> {
+function splitVersion(code: string): Step<VersionedPayload> {
   if (code.length > MAX_BILL_CODE_LENGTH) {
     return malformed(
       `The link is longer than ${String(MAX_BILL_CODE_LENGTH)} characters`,
@@ -146,11 +185,15 @@ function splitVersion(code: string): Step<string> {
   if (!Number.isSafeInteger(version)) {
     return malformed("The format version is too large");
   }
-  if (version !== BILL_CODE_VERSION) {
+
+  const readBill = BILL_READERS.get(version);
+  if (readBill === undefined) {
     return failed({ kind: "unsupportedVersion", version });
   }
 
-  return passed(code.slice(separatorIndex + VERSION_SEPARATOR.length));
+  const encodedPayload = code.slice(separatorIndex + VERSION_SEPARATOR.length);
+
+  return passed({ readBill, encodedPayload });
 }
 
 function parsePayload(encodedPayload: string): Step<unknown> {
@@ -167,14 +210,42 @@ function parsePayload(encodedPayload: string): Step<unknown> {
   }
 }
 
-function readRawBill(json: unknown): Step<RawBill> {
-  if (!isTuple(json, BILL_TUPLE_LENGTH)) {
+function readLegacyBill(json: unknown): Step<RawBill> {
+  if (!isTuple(json, LEGACY_BILL_TUPLE_LENGTH)) {
     return invalidBill(
       "The bill must consist of a list of names and a list of expenses",
     );
   }
 
   const [names, expenses] = json;
+  const namesAndExpenses = readNamesAndExpenses(names, expenses);
+  if (namesAndExpenses.kind === "failed") return namesAndExpenses;
+
+  return passed({ ...namesAndExpenses.value, currency: undefined });
+}
+
+function readCurrentBill(json: unknown): Step<RawBill> {
+  if (!isTuple(json, BILL_TUPLE_LENGTH)) {
+    return invalidBill(
+      "The bill must consist of a list of names, a list of expenses and a currency",
+    );
+  }
+
+  const [names, expenses, currencyCode] = json;
+  const namesAndExpenses = readNamesAndExpenses(names, expenses);
+  if (namesAndExpenses.kind === "failed") return namesAndExpenses;
+
+  const currency = readCurrency(currencyCode);
+  if (currency.kind === "failed") return currency;
+
+  return passed({ ...namesAndExpenses.value, currency: currency.value });
+}
+
+/** The part shared by all versions: participant names and the list of expenses. */
+function readNamesAndExpenses(
+  names: unknown,
+  expenses: unknown,
+): Step<Omit<RawBill, "currency">> {
   if (!isStringList(names)) {
     return invalidBill("Participant names must be a list of strings");
   }
@@ -186,6 +257,14 @@ function readRawBill(json: unknown): Step<RawBill> {
   if (rawExpenses.kind === "failed") return rawExpenses;
 
   return passed({ names, expenses: rawExpenses.value });
+}
+
+function readCurrency(value: unknown): Step<Currency> {
+  if (!isCurrency(value)) {
+    return invalidBill("The currency is not one of the supported ones");
+  }
+
+  return passed(value);
 }
 
 function readRawExpense(value: unknown, index: number): Step<RawExpense> {
@@ -233,7 +312,7 @@ function buildExpense(
   }
   if (!isPositiveKopecks(amount)) {
     return invalidBill(
-      `The amount of expense ${String(expenseNumber)} is not a positive integer number of kopecks`,
+      `The amount of expense ${String(expenseNumber)} is not a positive integer number of minor units`,
     );
   }
 

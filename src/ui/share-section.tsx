@@ -1,4 +1,5 @@
 import { createEffect, createSignal, on } from "solid-js";
+import type { Currency } from "../bill/currency";
 import { encodeBill } from "../sharing/bill-code";
 import { buildShareUrl } from "./address";
 import type { BillProps } from "./bill-props";
@@ -27,7 +28,11 @@ function describeShareState(state: ShareState): string {
   }
 }
 
-export function ShareSection(props: BillProps) {
+interface ShareSectionProps extends BillProps {
+  readonly currency: Currency;
+}
+
+export function ShareSection(props: ShareSectionProps) {
   const [state, setState] = createSignal(IDLE_STATE);
   let linkInput: HTMLInputElement | undefined;
 
@@ -81,7 +86,7 @@ export function ShareSection(props: BillProps) {
   }
 
   function shareLink(): void {
-    const link = buildShareUrl(encodeBill(props.bill));
+    const link = buildShareUrl(encodeBill(props.bill, props.currency));
     const isClipboardAvailable = "clipboard" in navigator;
     if (!isClipboardAvailable) {
       showLinkField(link);
