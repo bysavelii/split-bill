@@ -7,7 +7,7 @@ import {
   PREVIEW_IMAGE_WIDTH,
 } from "./page-metadata";
 
-const SITE_ROOT = new URL("https://bysavelii.github.io/split-bill/");
+const SITE_ROOT = new URL("https://split-bill.bysavelii.com/");
 const PUBLIC_DIRECTORY = new URL("../../public/", import.meta.url);
 /** A PNG starts with a signature, then the IHDR chunk: length, type, width, height. */
 const PNG_SIGNATURE = Buffer.from([
