@@ -11,12 +11,10 @@ import {
 } from "../seo/page-metadata";
 import LocalePage from "./[...locale].astro";
 
-const SITE = "https://bysavelii.github.io";
+const SITE = "https://split-bill.bysavelii.com";
 const ENGLISH_URL = `${SITE}/`;
 const RUSSIAN_URL = `${SITE}/ru/`;
 
-// The container does not know the base path: `import.meta.env.BASE_URL` is `/` there, so the
-// addresses sit right under the site origin.
 let container: AstroContainer;
 
 beforeAll(async () => {

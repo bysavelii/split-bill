@@ -3,9 +3,9 @@ import { DICTIONARIES } from "../i18n/dictionaries";
 import { LOCALES } from "../i18n/locales";
 import { buildPageMetadata, serializeStructuredData } from "./page-metadata";
 
-const SITE_ROOT = new URL("https://bysavelii.github.io/split-bill/");
+const SITE_ROOT = new URL("https://split-bill.bysavelii.com/");
 const ENGLISH_URL = SITE_ROOT.href;
-const RUSSIAN_URL = "https://bysavelii.github.io/split-bill/ru/";
+const RUSSIAN_URL = "https://split-bill.bysavelii.com/ru/";
 const MAX_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 160;
 
