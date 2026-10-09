@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "2026-10-09-a76a1694",
+  "timestamp": "2026-10-09T13:16:00.977Z",
+  "projectId": "split-bill",
+  "source": {
+    "type": "manual"
+  },
+  "type": "decision",
+  "data": {
+    "title": "The site lives at the root of https://split-bill.bysavelii.com on the project VM (bysavelii/server, sites/split-bill) and is deployed by the workflow CI from main as the image ghcr.io/bysavelii/split-bill:<sha>; GitHub Pages is turned off, and old links to bysavelii.github.io/split-bill/ no longer open",
+    "description": "The owner chose to move the app to its own domain next to the other sites on the VM and to drop the GitHub Pages copy instead of keeping a redirect"
+  }
+}

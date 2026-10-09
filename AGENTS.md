@@ -4,7 +4,7 @@ Rules of this project for agents and people. The development process is set by C
 
 ## About the project
 
-split-bill is the web app "Split the bill": a group enters expenses, and the app calculates who owes whom and how much, and reduces the settlements to the minimal number of transfers. For anyone who travels in a group or goes to a cafe together. The app speaks English (the page `/split-bill/`) and Russian (`/split-bill/ru/`), and a bill is kept in US dollars or Russian rubles.
+split-bill is the web app "Split the bill": a group enters expenses, and the app calculates who owes whom and how much, and reduces the settlements to the minimal number of transfers. For anyone who travels in a group or goes to a cafe together. The app speaks English (the page `/`) and Russian (`/ru/`), and a bill is kept in US dollars or Russian rubles. It lives at https://split-bill.bysavelii.com.
 
 - Programming language: TypeScript. Stack: Astro (static site generation, build and dev server) with a single Solid island `<App client:load />` for the interface; Vitest with `@solidjs/testing-library` (tests), ESLint with `eslint-plugin-solid` (linter), Prettier with `prettier-plugin-astro` (formatting). Node 22.12+. `@types/jsdom` 30 is used with `jsdom` 29 because there are no 29.x types; check the pair on every `jsdom` upgrade.
 - Language rules: UI texts are in English (the default language) and in Russian, and live only in the dictionaries `src/i18n/en.ts` and `src/i18n/ru.ts` (see "Texts, languages and currencies"). Everything else is in English: code comments, messages (errors, logs, tool output), test names, commit messages, the README, this file, PR descriptions and new journal entries. Identifiers (variables, functions, types, file names) are in English too. Old commit messages stay as they are.
@@ -15,6 +15,12 @@ split-bill is the web app "Split the bill": a group enters expenses, and the app
 - Formatting: `npm run format`
 - Checks (`verification.commands` in `.cyberzavod/project.json`):
   - `make check` (formatting check, `astro check` for types, ESLint, Vitest, `astro build`). Vitest includes the repository language check (`src/repository-language.test.ts`, see "Language of the project").
+
+## Deployment
+
+- A merge into `main` is a release: the workflow "CI" (`.github/workflows/ci.yml`) runs `make check`, builds the image `ghcr.io/bysavelii/split-bill:<sha>` from `Dockerfile` and deploys it to the VM over SSH. Pull requests get only the checks.
+- The server side (nginx with TLS and security headers, the deploy script, the compose file) lives in the repository bysavelii/server, folder `sites/split-bill`; this repository knows only the secrets of the `production` environment. The server address, keys and tokens never go into this repository.
+- The Content-Security-Policy on the server allows inline scripts and styles: Astro inlines the island loader and small CSS, and the Solid renderer inlines its hydration script. A change that needs a new kind of source (a font, an image from another host, a network request) needs the policy changed in bysavelii/server first.
 
 ## Tasks
 
@@ -122,7 +128,7 @@ Contrast (WCAG): text no lower than 4.5:1, controls and icons no lower than 3:1.
 
 Tests do not check the look, so after changing styles or texts look at it with your own eyes:
 
-1. `npm run build`, then `npx astro preview --port 4173 --strictPort` in the background (stop it with `npx astro preview stop`). The pages are `http://localhost:4173/split-bill/` (English) and `http://localhost:4173/split-bill/ru/` (Russian); the site is built with the base path `/split-bill/`.
+1. `npm run build`, then `npx astro preview --port 4173 --strictPort` in the background (stop it with `npx astro preview stop`). The pages are `http://localhost:4173/` (English) and `http://localhost:4173/ru/` (Russian).
 2. Put the Playwright script in a temporary directory outside the repository and do not add Playwright, Lighthouse or screenshot-comparison libraries to the project dependencies: use the globally installed Playwright (its directory is `npm root -g`).
 3. Example bills go after `#` in the address:
    - Russian example bill, version 1: four participants, 4,800.00 for everyone, 1,250.50 for three, 600.00 for two; it opens in rubles on the Russian page:

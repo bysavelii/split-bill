@@ -1,0 +1,124 @@
+# Checks on every pull request into main and every push to main; on main they are followed by
+# the site image in GHCR and the deployment to https://split-bill.bysavelii.com.
+#
+# The server is not described in this repository: the project knows only its address, its own key
+# and the sha of the commit. The server side lives in the repository bysavelii/server.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its previous checks; runs on main are never cancelled,
+# so a deployment is not cut off halfway.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/bysavelii/split-bill
+
+jobs:
+  check:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: make check
+
+  # The image is tagged with the full commit sha: a version is deployed and rolled back by it.
+  # Third-party actions with write access to the registry are pinned by commit sha, not by tag.
+  image:
+    name: Image
+    if: github.event_name == 'push'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # The project key on the server can do only one thing: deploy the image of the given sha.
+  deploy:
+    name: Deploy
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # packages: read — the temporary job token pulls the private image on the server and expires with the job.
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: production
+      url: https://split-bill.bysavelii.com
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      # If a newer commit reached main while the image was built, this one must not be deployed:
+      # it would bring back an older version. A failure to read main fails the job instead of
+      # looking like "there is a newer commit".
+      - name: The commit is still the latest in main
+        id: freshness
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [[ ! "$head" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::could not read the latest commit of main: '$head'"
+            exit 1
+          fi
+          if [ "$head" = "$GITHUB_SHA" ]; then
+            echo "latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::main is already at ${head:0:7}, skipping the deployment of ${GITHUB_SHA:0:7}"
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Key and server fingerprint
+        if: steps.freshness.outputs.latest == 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      # The token goes to stdin, not to the arguments: those are visible in ps and in the server logs.
+      - name: Deploy
+        if: steps.freshness.outputs.latest == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: >-
+          printf '%s' "$REGISTRY_TOKEN" |
+          ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes
+          -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4
+          "deploy@$DEPLOY_HOST" "$GITHUB_SHA"
