@@ -4,8 +4,8 @@ A web app for people who travel in a group or go to a cafe together: enter the e
 
 The interface is in English and in Russian, and a bill is kept in US dollars or Russian rubles:
 
-- English: `https://bysavelii.github.io/split-bill/`
-- Russian: `https://bysavelii.github.io/split-bill/ru/`
+- English: https://split-bill.bysavelii.com/
+- Russian: https://split-bill.bysavelii.com/ru/
 
 <img src="docs/screenshot.png" width="390" alt="The app Split the bill on a phone: an example bill with the participants Ann, Ben, Clara and Dan and the expense form">
 
@@ -22,7 +22,7 @@ The Russian version:
 - Participants: add and remove people from the group.
 - Expenses: who paid, how much and for whom: for everyone or only for part of the group.
 - Summary: the minimal number of transfers and an explanation of how it was calculated (who paid how much and what their share is).
-- Two languages and two currencies: English (dollars by default) at `/split-bill/` and Russian (rubles by default) at `/split-bill/ru/`. The language link and the currency select are in the header; the currency is only a label of the bill, there is no conversion between currencies.
+- Two languages and two currencies: English (dollars by default) at `/` and Russian (rubles by default) at `/ru/`. The language link and the currency select are in the header; the currency is only a label of the bill, there is no conversion between currencies.
 - Light and dark themes follow the system setting; on a wide screen there are two columns: participants and expenses on the left, the summary on the right.
 - The "Share" link needs no server or registration: the bill and its currency are stored in the address fragment after `#`, and the server never receives them. The language link carries the bill along too, so switching the language keeps it. Links made by older versions of the app (without a currency) still open.
 - Both pages are indexable: the `<head>` has the title, description, canonical and `hreflang` links, Open Graph and Twitter tags and structured data; the site has a sitemap, `robots.txt` and a preview image per language; the title, the subtitle and the "How it works" section are in the page without scripts.
@@ -37,10 +37,10 @@ Node 22.12 or newer is required. The site is built with [Astro](https://astro.bu
 
 ```sh
 npm ci            # install dependencies
-npm run dev       # dev server at http://localhost:4321/split-bill/ — open the address in a browser
+npm run dev       # dev server at http://localhost:4321/ — open the address in a browser
 make check        # checks: formatting, types (astro check), linter, tests, build
 npm run build     # build the static site into the dist directory
-npm run preview   # look at the built app at http://localhost:4321/split-bill/
+npm run preview   # look at the built app at http://localhost:4321/
 npm run format    # format the code
 ```
 
@@ -57,18 +57,22 @@ npm run format    # format the code
 - `src/style.css` — styles: tokens (colors of both themes, spacing, radii) and the layout for phone and computer; the rules are in AGENTS.md, section "Interface style".
 - `public` — the favicon and the preview images `og-image-en.png` and `og-image-ru.png`.
 - `docs` — screenshots and Lighthouse reports.
-- `.github/workflows` — checks on pull requests and deployment to GitHub Pages.
+- `.github/workflows` — checks on pull requests, the site image and the deployment from `main`.
+- `Dockerfile`, `nginx.conf` — the site image: the Astro build served by nginx on port 8080.
 
 Code without the DOM (`src/bill`, `src/settlement`, `src/sharing`, `src/i18n`, `src/seo`) knows nothing about the DOM, Solid and Astro: ESLint enforces this. How to add a text, a language or a currency is in AGENTS.md, section "Texts, languages and currencies".
 
-## Deploying to GitHub Pages
+## Deployment
 
-The site is deployed from the `main` branch by the workflow "Deploy to GitHub Pages". The workflow "Checks" runs `make check` on every pull request into `main`.
+The site lives at https://split-bill.bysavelii.com on the project VM, described in the repository [bysavelii/server](https://github.com/bysavelii/server) (folder `sites/split-bill`). The workflow "CI" runs `make check` on every pull request into `main`; a push to `main` goes further:
 
-1. In the repository open Settings → Pages → Build and deployment and choose Source: "GitHub Actions".
-2. Push to `main` or open Actions → "Deploy to GitHub Pages" → Run workflow (branch `main`: the `github-pages` environment by default allows deployment only from the default branch).
+1. Checks: `make check`.
+2. Image: `docker build` of this repository, pushed as the private image `ghcr.io/bysavelii/split-bill:<full commit sha>` (nginx with the static site on port 8080).
+3. Deploy: `ssh deploy@<server> <sha>` with the project key, with the temporary job token (`packages: read`) on stdin. The server pulls the image, switches to it, waits for the healthcheck and returns the previous version if the new one does not start. A commit that is no longer the latest in `main` is not deployed.
 
-`astro build` puts the site into `dist` with the base path `/split-bill/`, and the workflow publishes that directory. The site address is `https://<owner>.github.io/split-bill/` (Russian under `ru/`); the canonical addresses and the sitemap are built from `site` in `astro.config.js`, which holds the address of the project's own deployment: change it for a fork. The address appears in Settings → Pages and in the run summary of the "Deploy" job.
+The deployment uses the secrets of the `production` environment (allowed only for `main`): `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DEPLOY_KNOWN_HOSTS`. TLS, the redirects from `www` and HTTP, and the security headers are set by nginx on the server; the server address is not in this repository. To roll back, revert the commit in `main`; an urgent rollback on the server is described in the README of bysavelii/server.
+
+The canonical addresses and the sitemap are built from `site` in `astro.config.js`: change it for a fork.
 
 ## Limitations
 
