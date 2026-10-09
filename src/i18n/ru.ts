@@ -132,6 +132,10 @@ export const RU_MESSAGES: Messages = {
       "Получите минимум переводов, после которых все в расчёте, и отправьте ссылку компании.",
     ],
   },
+  footer: {
+    madeBy: "Автор —",
+    authorSite: "https://bysavelii.com/ru/",
+  },
   currencyLabel: "Валюта",
   currencyNames: {
     USD: "Доллар США",

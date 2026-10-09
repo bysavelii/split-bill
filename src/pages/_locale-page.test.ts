@@ -165,4 +165,16 @@ describe.each(LOCALES)("the %s page", (locale) => {
     );
     expect(steps).toEqual(messages.howItWorks.steps);
   });
+
+  it("names the author and links to the author's site in its language", async () => {
+    const page = await renderPage(locale);
+    const footer = page.querySelector("body > footer");
+    const authorLink = footer?.querySelector("a");
+
+    expect(footer?.textContent.trim()).toBe(
+      `${messages.footer.madeBy} bysavelii`,
+    );
+    expect(authorLink?.textContent).toBe("bysavelii");
+    expect(authorLink?.getAttribute("href")).toBe(messages.footer.authorSite);
+  });
 });

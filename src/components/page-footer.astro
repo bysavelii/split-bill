@@ -1,0 +1,21 @@
+---
+import type { Messages } from "../i18n/messages";
+
+interface Props {
+  readonly messages: Messages["footer"];
+}
+
+const { messages } = Astro.props;
+
+// The author's handle reads the same in every language, so it is not in the dictionaries.
+const AUTHOR_NAME = "bysavelii";
+---
+
+<footer class="page-footer">
+  <p>
+    {messages.madeBy}{" "}
+    <a class="author-link" href={messages.authorSite}>
+      {AUTHOR_NAME}
+    </a>
+  </p>
+</footer>
