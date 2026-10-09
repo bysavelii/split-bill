@@ -129,6 +129,13 @@ export interface Messages {
     readonly heading: string;
     readonly steps: readonly [string, string, string];
   };
+  /** The line under the page that names the author. */
+  readonly footer: {
+    /** The words before the author's name. */
+    readonly madeBy: string;
+    /** The author's site in the language of the page. */
+    readonly authorSite: string;
+  };
   /** The accessible name of the currency select; the label is not shown. */
   readonly currencyLabel: string;
   readonly currencyNames: Record<Currency, string>;

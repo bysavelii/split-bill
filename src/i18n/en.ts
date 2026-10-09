@@ -113,6 +113,10 @@ export const EN_MESSAGES: Messages = {
       "See the fewest transfers that settle everyone up, and send the link to the group.",
     ],
   },
+  footer: {
+    madeBy: "Made by",
+    authorSite: "https://bysavelii.com/",
+  },
   currencyLabel: "Currency",
   currencyNames: {
     USD: "US dollar",

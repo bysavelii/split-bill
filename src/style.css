@@ -808,7 +808,8 @@ fieldset > .field-error:not(:empty) {
 
 /* On a phone the margins are narrower so the "How it is calculated" table fits without scrolling at 360 px. */
 @media (max-width: 480px) {
-  main {
+  main,
+  .page-footer {
     padding-inline: var(--space-2);
   }
 
@@ -826,9 +827,30 @@ fieldset > .field-error:not(:empty) {
   }
 }
 
+/* The same column as main, so the line stays under the content on every width. */
+.page-footer {
+  max-width: var(--column-width);
+  margin: 0 auto;
+  padding: 0 var(--space-4) var(--space-5);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.author-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-1);
+  font-weight: 600;
+  color: var(--color-accent);
+  border-radius: var(--radius-control);
+}
+
 /* 900 px is the width from which two columns beat one (a value cannot be taken from a variable in @media). */
 @media (min-width: 900px) {
-  main {
+  main,
+  .page-footer {
     max-width: var(--column-width-wide);
   }
 

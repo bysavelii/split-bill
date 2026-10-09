@@ -2,6 +2,7 @@
 import type { InferGetStaticPropsType } from "astro";
 import "../style.css";
 import HowItWorks from "../components/how-it-works.astro";
+import PageFooter from "../components/page-footer.astro";
 import PageHead from "../components/page-head.astro";
 import { DICTIONARIES } from "../i18n/dictionaries";
 import { buildRouteParameter, LOCALES } from "../i18n/locales";
@@ -35,5 +36,6 @@ const metadata = buildPageMetadata({ locale, siteRoot });
       <App client:load locale={locale} />
       <HowItWorks messages={messages.howItWorks} />
     </main>
+    <PageFooter messages={messages.footer} />
   </body>
 </html>
